@@ -31,8 +31,8 @@ AH6J = {
 	-------------- Aircraft Physical properties -----------
 	length				= 32.06*ftToM, -- [meters]
 	height				= 8.9*ftToM, -- [meters]
-	rotor_RPM			= 475, -- This is used in the EFM for rotor sound
-	tail_rotor_RPM		= 2838,
+	rotor_RPM			= 475, -- Used for front rotor sound in tandem scaffold
+	tail_rotor_RPM		= 475, -- Repurposed as rear rotor sound channel in tandem scaffold
 	M_empty				= 2550*lbToKg, -- [kg] empty weight (2150lb) + pilots (400lb)
 	M_nominal			= 2900*lbToKg, -- [kg]
 	M_max				= 3950*lbToKg, -- Max gross weight [kg]
@@ -69,7 +69,7 @@ AH6J = {
 	flight_time_maximum	=	180,-- minutes
 	Vy_land_max			=	20*knotToMpS, -- landing speed [m/s]
 	Ny_max				=	3.5, --max G for AI
-	scheme				=	0,-- 0 for normal rotor configuration, 1 for Coaxial (Ka-50),  2 for tandem (CH-47)
+	scheme				=	2,-- 0 normal, 1 coaxial, 2 tandem
 	----- AI flight model probably (doesnt affect human FM)
 	rotor_height		=	7.67*ftToM,-- height of rotor from ground [meters]
 	rotor_diameter		=	27.35*ftToM,-- [meters]

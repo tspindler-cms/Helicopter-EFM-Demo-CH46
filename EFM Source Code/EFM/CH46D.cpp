@@ -442,7 +442,7 @@ void ed_fm_repair()
 // external model draw arguments.  size: count of elements in array
 void ed_fm_set_draw_args_v2(float* drawargs, size_t size)
 {
-	drawargs[EXT_TRcollective] = (float)-flightControls.PedalInput;
+	drawargs[EXT_TRcollective] = (float)limit((Aero.getRearCollectiveDeg() - Aero.getFrontCollectiveDeg()) / 12.0, -1.0, 1.0);
 	drawargs[EXT_Collective] = (float)flightControls.CollectiveInput;
 	drawargs[EXT_CyclicRoll] = (float)flightControls.rollOutput;
 	drawargs[EXT_CyclicPitch] = (float)flightControls.pitchOutput;
@@ -483,21 +483,21 @@ double ed_fm_get_param(unsigned param_enum)
 {
 	switch (param_enum)
 	{
-	case ED_FM_PROPELLER_0_RPM:	// this is neccesary for rotor sound, rpm should match definition in AH-6.lua rotor_RPM
+	case ED_FM_PROPELLER_0_RPM:	// front rotor RPM for tandem scaffold
 		return Aero.getMRomega() * Convert::radSecToRPM;
 	case ED_FM_PROPELLER_0_PITCH:  // propeller blade pitch
 		
 	case ED_FM_PROPELLER_0_TILT:   // for helicopter
-		return flightControls.CollectiveInput * 19;
+		return Aero.getFrontCollectiveDeg();
 	case ED_FM_PROPELLER_0_INTEGRITY_FACTOR:   // for 0 to 1 , 0 is fully broken 
 		return 1;
 
-	case ED_FM_PROPELLER_1_RPM:	// this is neccesary for rotor sound, rpm should match definition in AH-6.lua tail_rotor_RPM
+	case ED_FM_PROPELLER_1_RPM:	// rear rotor RPM for tandem scaffold
 		return Aero.getTRomega() * Convert::radSecToRPM;
 	case ED_FM_PROPELLER_1_PITCH:  // propeller blade pitch
 
 	case ED_FM_PROPELLER_1_TILT:   // for helicopter
-		return flightControls.PedalInput * 16;
+		return Aero.getRearCollectiveDeg();
 	case ED_FM_PROPELLER_1_INTEGRITY_FACTOR:   // for 0 to 1 , 0 is fully broken 
 		return 1;
 

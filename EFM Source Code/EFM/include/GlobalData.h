@@ -55,10 +55,10 @@ enum ExternalAnimationArgs
 	//EXT_Pedals = 17,
 	EXT_RotorDroop = 36,
 	EXT_RotorSpin = 37,//this is control arg, actual arg is 40
-	EXT_TRspin = 42,//this is control arg, actual arg is 41
+	EXT_TRspin = 42,//this is control arg, actual arg is 41 (repurposed as rear rotor spin in tandem scaffold)
 	EXT_NavLights = 190,
 	EXT_LandingLight = 208,
-	EXT_TRcollective = 17,
+	EXT_TRcollective = 17, // repurposed as rear-front differential collective animation
 	//510 aiming mark
 };
 

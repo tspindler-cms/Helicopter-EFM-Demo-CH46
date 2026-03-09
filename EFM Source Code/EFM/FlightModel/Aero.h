@@ -64,10 +64,13 @@ public:
 
    
     void MainRotorModule();
+    void RearRotorModule();
     void FuselageModule();
     void EmpennageModule();
-    void TailRotorModule();
     void RotorDegreeOfFreedom(double engtorque);
+    void TandemRotorControlMix(double& thetaFront, double& thetaRear,
+        double& a1Front, double& a1Rear,
+        double& b1Front, double& b1Rear) const;
 
 
     void setBodyStates(double ax, double ay, double az,
@@ -102,11 +105,19 @@ public:
     }
     double getTRomega()
     {
-        return OmegaTR;
+        return OmegaRR;
     }
     double getN2omega()
     {
         return OmegaE;
+    }
+    double getFrontCollectiveDeg() const
+    {
+        return frontCollectiveDeg;
+    }
+    double getRearCollectiveDeg() const
+    {
+        return rearCollectiveDeg;
     }
     const double getN2PCT()
     {
@@ -166,23 +177,14 @@ private:
     const double WLVT{ 56.0 };		// WL vertical tail, [inch]
     const double SAVT{ 9.6 };         // Vertical tail surface area, [ft^2]
 
-    //============== Tail Rotor Constants ===============
-    const double BLTR{ -11.0 };			//buttline TR(y pos), [in]
-    const double FSTR{ 292.0 };			// fuselage station(x pos) TR, [in]
-    const double WLTR{ 54.1 };			//waterline(height) pos, [in]
-    const double OmegaTR_T{ 297.2 };	//TR nominal rotational speed, [rad/sec] (297.2 = 2838rpm)
-    const int bNTR{ 2 };				//number of TR blades
-    const double cTR{ 0.4 };			//TR blade chord, [ft]
-    const double RTR{ 2.375 };			//TR radius, [ft]
-    const double aTR{ 5.6 };			//tail rotor blade lift curve slope, [1/rad]
-    const double BTR{ 0.94 };			//TR blade tip loss factor
-    const double KTRBLK{ 0.94 };			//fin-tail blockage factor ***estimate
-    const double GammaTR{ 90.0 * Convert::degToRad };	//tail rotor cant(tilt) angle from up, [rad]
-    const double Delt3TR{ 43.0 * Convert::degToRad };	//TR blade hinge skew angle, [rad]
-    const double Theta1TR{ -8.0 };		//TR blade twist, [deg]
-    const double DragTR{ 1.3 };         // Tail Rotor Drag coefficient
-    const double da0overdT{ 0.00129 };	// rate of change of cone angle, [deg/lb]
-    const double KlambdaPrimeTR{ 0.1 };			//downwash loop filter const 
+    //============== Tandem Rotor Constants ===============
+    const double FSRR{ 220.0 }; // rear rotor fuselage station, [in], TODO tune for CH-46 geometry
+    const double WLRR{ 86.0 };  // rear rotor waterline, [in], TODO tune for CH-46 geometry
+    const double BLRR{ 0.0 };   // rear rotor buttline, [in]
+    const double rearCollectiveAuthority{ 4.0 }; // pedal-to-collective differential, [deg]
+    const double pitchCollectiveBias{ 3.0 }; // pitch input collective split, [deg]
+    const double rearCTGain{ 0.00115 }; // collective to Ct gain (scaffold), [1/deg]
+    const double rearProfileDrag{ 0.012 }; // profile drag share (scaffold)
 
     //============== Gearbox Constants ==================
     const double JMR = 600.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
@@ -257,13 +259,12 @@ private:
     double VZIWU = 0.0;     //wing downwash velocity at upper HT, z axis, [ft/s]
     double VYIW = 0.0;      //wing sidewash velocity at VT, y axis, [ft/s]
 
-    // tail rotor variable setup
-    double OmegaTR = 0.0;   // tail rotor rotional veloctiy [rad/s]
-    double PsiTR = 0.0;     // whole rotor rotation, -pi to pi [rad]
-    double TTR = 0.0;       // tail rotor thrust, [lb]
-    double DWTR = 0.0;      // downwash Tail rotor, normalized 0-1 (ie 1==OmegaT * RMR)
-    double LambdaTR = 0.0;  //tail rotor inflow, normalized 0-1 (ie 1==OmegaT * RMR)
-    double TRSolidity = 0.0; // solidity of TR, ie ratio of blade area to disk size
+    // rear rotor variable setup
+    double OmegaRR = 0.0;   // rear rotor rotational velocity [rad/s]
+    double PsiRR = 0.0;     // rear rotor azimuth, -pi to pi [rad]
+    double rearCollectiveDeg = 0.0; // commanded rear rotor collective [deg]
+    double frontCollectiveDeg = 0.0; // commanded front rotor collective [deg]
+    double rearRotorThrust_lb = 0.0; // simplified rear rotor thrust [lb]
 
 
     // Body states

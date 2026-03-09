@@ -51,13 +51,17 @@ void AH6Aero::Initialize()
 	}
 	//cy mean chord of segment 
 
-	TRSolidity = bNTR * cTR / (M_PI * RTR);
+	frontCollectiveDeg = 0.0;
+	rearCollectiveDeg = 0.0;
+	rearRotorThrust_lb = 0.0;
 }
 	
 void AH6Aero::InitializeOff()
 {
 	Omega = 0.0;
+	OmegaRR = 0.0;
 	OmegaE = 0.0;
+	PsiRR = 0.0;
 	LambdaMR = 0.0;
 	CTA = 0.01;
 	DWMR = 0.01;
@@ -66,7 +70,9 @@ void AH6Aero::InitializeOff()
 void AH6Aero::InitializeOn()
 {
 	Omega = OmegaT;
+	OmegaRR = OmegaT;
 	OmegaE = OmegaT;
+	PsiRR = 0.0;
 	LambdaMR = -0.022;
 	CTA = 0.014;
 	DWMR = 0.022;
@@ -75,10 +81,31 @@ void AH6Aero::InitializeOn()
 void AH6Aero::update(double engtorque)
 {
 	MainRotorModule();
+	RearRotorModule();
 	FuselageModule();
 	EmpennageModule();
-	TailRotorModule();
 	RotorDegreeOfFreedom(engtorque);
+}
+
+void AH6Aero::TandemRotorControlMix(double& thetaFront, double& thetaRear,
+	double& a1Front, double& a1Rear,
+	double& b1Front, double& b1Rear) const
+{
+	// Scaffold control mixing for tandem rotors:
+	// - yaw input uses differential collective
+	// - pitch input adds a small fore/aft collective split
+	// - roll/cyclic is fed to both rotors
+	const double baseCollectiveDeg = p_flightControl.CollectiveInput * 19.0 + 2.0;
+	const double pedalSplitDeg = p_flightControl.PedalInput * rearCollectiveAuthority;
+	const double pitchSplitDeg = p_flightControl.pitchOutput * pitchCollectiveBias;
+
+	thetaFront = baseCollectiveDeg + pedalSplitDeg - pitchSplitDeg;
+	thetaRear = baseCollectiveDeg - pedalSplitDeg + pitchSplitDeg;
+
+	a1Front = p_flightControl.rollOutput * 8.0;
+	a1Rear = p_flightControl.rollOutput * 8.0;
+	b1Front = p_flightControl.pitchOutput * 12.0;
+	b1Rear = p_flightControl.pitchOutput * 12.0;
 }
 
 
@@ -87,9 +114,17 @@ void AH6Aero::update(double engtorque)
 // check control input pitch amounts
 void AH6Aero::MainRotorModule()
 {
-	double ThetaCUFF = p_flightControl.CollectiveInput * 19.0 + 2.0;//impressed MR collective pitch, [deg]
-	double A1S = p_flightControl.rollOutput * 8.0;//total lat cyclic input, -8 to 8 [deg]
-	double B1S = p_flightControl.pitchOutput * 12.0;//total long cyclic input, -11 to 15 [deg]
+	double ThetaCUFF = 0.0;
+	double ThetaRear = 0.0;
+	double A1S = 0.0;
+	double A1Rear = 0.0;
+	double B1S = 0.0;
+	double B1Rear = 0.0;
+	TandemRotorControlMix(ThetaCUFF, ThetaRear, A1S, A1Rear, B1S, B1Rear);
+	(void)ThetaRear;
+	(void)A1Rear;
+	(void)B1Rear;
+	frontCollectiveDeg = ThetaCUFF;
 
 
 	double Weight = p_EFMdata.mass_kg * Convert::kg_to_lb;
@@ -697,66 +732,77 @@ void AH6Aero::EmpennageModule()
 	aeroForces.push_back(VTForce);
 }
 
-void AH6Aero::TailRotorModule()
+void AH6Aero::RearRotorModule()
 {
-	double ThetaCTR = p_flightControl.PedalInput * 16.0 + 9.0;//TR collective pitch, 14.0 + 4.0
+	double ThetaFront = 0.0;
+	double ThetaRear = 0.0;
+	double A1Front = 0.0;
+	double A1Rear = 0.0;
+	double B1Front = 0.0;
+	double B1Rear = 0.0;
+	TandemRotorControlMix(ThetaFront, ThetaRear, A1Front, A1Rear, B1Front, B1Rear);
+	(void)ThetaFront;
+	(void)A1Front;
+	(void)A1Rear;
+	(void)B1Front;
+	(void)B1Rear;
+	rearCollectiveDeg = ThetaRear;
 
-	double DeltaPsi = OmegaTR * p_EFMdata.deltaTime;//MR advance angle, [rad]
-	PsiTR += DeltaPsi;//MR rotational position
-	if (PsiTR > M_PI)
+	const double lRR = (FSRR - FSCG) / 12.0;
+	const double hRR = (WLRR - WLCG) / 12.0;
+	const double bRR = (BLRR - BLCG) / 12.0;
+
+	double VXRR = VXB - q * hRR + r * bRR;
+	double VYRR = VYB - r * lRR + p * hRR;
+	double VZRR = VZB + q * lRR - p * bRR;
+	double speedRR = sqrt(VXRR * VXRR + VYRR * VYRR + VZRR * VZRR);
+	double muRR = speedRR / (OmegaT * RMR);
+
+	// Low-fidelity rear rotor scaffold model. This is intentionally simple and
+	// intended as a starting point for CH-46 tuning.
+	double ctRear = limit((ThetaRear - 2.0) * rearCTGain, -0.02, 0.03);
+	double ctRearDyn = ctRear * (1.0 - 0.25 * limit(muRR, 0.0, 1.0));
+	rearRotorThrust_lb = 2.0 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 4) * M_PI * ctRearDyn;
+	double rearThrustHealthy = rearRotorThrust_lb * p_Damage.elementIntegrity[BLADE_5_CENTER];
+
+	double XRR = rearProfileDrag * 0.5 * p_EFMdata.rho_SlgFt3 * VXRR * abs(VXRR);
+	double YRR = 0.0;
+	double ZRR = -rearThrustHealthy;
+
+	ForceComponent rearRotorForce;
+	rearRotorForce.dir.x = XRR * Convert::lbf_to_N;
+	rearRotorForce.dir.y = -ZRR * Convert::lbf_to_N;
+	rearRotorForce.dir.z = YRR * Convert::lbf_to_N;
+	rearRotorForce.pos.x = -lRR * Convert::feetToMeter;
+	rearRotorForce.pos.y = hRR * Convert::feetToMeter;
+	rearRotorForce.pos.z = bRR * Convert::feetToMeter;
+	aeroForces.push_back(rearRotorForce);
+
+	// Differential collective between front and rear rotors is the tandem yaw source.
+	double diffCollective = frontCollectiveDeg - rearCollectiveDeg;
+	double yawMoment = diffCollective * 500.0; // [ft-lb], scaffold gain
+	Vec3 rearRotorMoment;
+	rearRotorMoment.x = 0.0;
+	rearRotorMoment.y = -yawMoment * Convert::lbft_to_Nm;
+	rearRotorMoment.z = 0.0;
+	aeroMoments.push_back(rearRotorMoment);
+
+	// Feed rear rotor induced torque into drivetrain DOF so governor has tandem load.
+	double qRear = abs(rearThrustHealthy) * RMR * 0.04;
+	QMR += qRear;
+
+	double DeltaPsi = OmegaRR * p_EFMdata.deltaTime;
+	PsiRR += DeltaPsi;
+	if (PsiRR > M_PI)
 	{
-		PsiTR -= 2.0 * M_PI;
+		PsiRR -= 2.0 * M_PI;
 	}
-	double animPos = PsiTR / (2.0 * M_PI);//animation is 0-1, but PsiTR is -Pi to Pi
-	if (animPos < 0)
+	double animPos = PsiRR / (2.0 * M_PI);
+	if (animPos < 0.0)
 	{
 		animPos += 1.0;
 	}
-	cockpitAPI.setExternalDrawArg(EXT_TRspin, (float)animPos);// TODO change rotation speed of TR
-
-	double lTR = (FSTR - FSCG) / 12.0;//TR moment arm x axis, [ft]
-	double hTR = (WLTR - WLCG) / 12.0;//TR moment arm z axis, [ft]
-	double bTR = BLTR / 12.0;		  //TR moment arm y axis, [ft]
-
-	double VXTRB = VXB * KQVT - q * hTR + r * bTR;	// +EKTXU * (DWMR * OmegaT * RMR);//TR x body axis velocity, [ft/sec]
-	double VYTRB = VYB - r * lTR + p * hTR;			// -VYIW * TauTU;//TR y body axis velocity, [ft/sec]
-	double VZTRB = VZB + q * lTR - p * bTR;			// -VZIWU * TauTU - EKTZU * (DWMR * OmegaT * RMR);//TR z body axis velocity, [ft/sec]
-
-	double VXTR = VXTRB;										//TR x shaft axis velocity, [ft/sec]
-	double VYTR = VYTRB * cos(GammaTR) + VZTRB * sin(GammaTR);	//TR y shaft axis velocity, [ft/sec]
-	double VZTR = -VYTRB * sin(GammaTR) + VZTRB * cos(GammaTR);	//TR z shaft axis velocity, [ft/sec]
-
-	double MuXTR = VXTR / (OmegaTR_T * RTR);//x shaft axis velocity at TR hub
-	double MuYTR = VYTR / (OmegaTR_T * RTR);//y shaft axis velocity at TR hub
-	double MuZTR = VZTR / (OmegaTR_T * RTR);//z shaft axis velocity at TR hub
-	double MuTR2 = pow(MuXTR, 2) + pow(MuYTR, 2);
-
-	double ThetaTR = (ThetaCTR - TTR * da0overdT * tan(Delt3TR)) / 57.3;//actual TR collective pitch angle, [rad]
-
-	double t31 = pow(BTR, 2) / 2.0 + MuTR2 / 4.0;//bailey coef
-	double t32 = pow(BTR, 3) / 3.0 + (BTR / 2.0) * MuTR2;//bailey coef
-	double t33 = pow(BTR, 4) / 4.0 + (pow(BTR, 2) / 4.0) * MuTR2;//bailey coef
-
-	double GTR = (aTR / 2.0) * TRSolidity;
-	double Klambda = KlambdaPrimeTR / p_EFMdata.deltaTime;//downwash filter constant
-	DWTR = ((Klambda - 1.0) / Klambda) * DWTR + (1.0 / Klambda) * (GTR * (MuZTR * t31 + ThetaTR * t32 + t33 * Theta1TR / 57.3) / (2.0 * sqrt(MuTR2 + pow(LambdaTR, 2)) + GTR * t31));// TR downwash
-	LambdaTR = MuZTR - DWTR;
-
-	double CTHTR = 2.0 * DWTR * sqrt(MuTR2 + pow(LambdaTR, 2));//TR thrust coef
-	TTR = CTHTR * pow(Omega / OmegaT, 2) * p_EFMdata.rho_SlgFt3 * M_PI * pow(RTR, 4) * pow(OmegaTR_T, 2) * KTRBLK;//Thrust TR, [lb]
-
-	double XTR = -DragTR * 0.5 * p_EFMdata.rho_SlgFt3 * pow(VXTR, 2);
-	double YTR = TTR * sin(GammaTR);
-	double ZTR = -TTR * cos(GammaTR);
-
-	ForceComponent TRForce;
-	TRForce.dir.x = XTR * Convert::lbf_to_N;
-	TRForce.dir.y = -ZTR * Convert::lbf_to_N;
-	TRForce.dir.z = YTR * Convert::lbf_to_N;
-	TRForce.pos.x = -lTR * Convert::feetToMeter;
-	TRForce.pos.y = hTR * Convert::feetToMeter;
-	TRForce.pos.z = bTR * Convert::feetToMeter;
-	aeroForces.push_back(TRForce);
+	cockpitAPI.setExternalDrawArg(EXT_TRspin, (float)animPos);
 }
 
 // todo: add TR torque?, tune inertias/ratios
@@ -811,7 +857,7 @@ void AH6Aero::RotorDegreeOfFreedom(double engtorque)
 	double OmegaMRDot = netMRTorque / JMR;//MR acceleration, [rad/s^2].   to disable rotor DOF set to 0
 	Omega += OmegaMRDot * p_EFMdata.deltaTime;
 	Omega = limit(Omega, 0.0, OmegaT * 1.2);//limit rotor speed to 120% to avoid FM anomalies, it should probably break at that point anyways
-	OmegaTR = OmegaTR_T * Omega / OmegaT;
+	OmegaRR = Omega;
 
 
 	//----- Outputs for lua indicator script -----
