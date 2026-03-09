@@ -145,7 +145,7 @@ private:
     const double ePrime{ 1.125 };			// distance from hinge to blade start, [ft]   this affects amount of blade area  
     const double Ib{ 1044.0 };				// main rotor blade inertia about hinge, slugs [ft^2]
     const double Mb{ 120.4 };				// blade first mass moment about hinge, slugs [ft]
-    const double Wb{ 155.0 };				// blade weight, [lb]
+    const double Wb{ 155.0 };				// blade weight, [lb] (CH-46D ~70.3 kg)
     const double Theta1{ -8.0 };				//main rotor blade twist, [deg/unit radius]
     const double iS{ -9.51 * Convert::degToRad }; // front shaft tilt, [rad] (forward)
     const double Kbeta{ 0.0 };				    //flapping hinge spring const, [ft lb/rad]    // this is 0 for articulated rotors
@@ -163,13 +163,13 @@ private:
     const double deltFWD{ 0.25 };		        // blade lagging angle forward limit, [rad]
 
 
-    //============== Fuselage constants =================
+    //============== Fuselage constants (CH-46D: vwv_ch46d_base.lua) ================
     const double SPF{ 100.54 };       // Frontal reference area, [ft^2] (9.34 m^2)
     const double SSF{ 230.0 };        // Effective side area, [ft^2]
 
-    //============== Tail constants =====================
-    const double EKTR{ 0.0 };		// tail rotor wash factor on vert tail
-    const double FSHT{ 290.0 };	    // FS horizontal tail, [inch]
+    //============== Tail constants (CH-46D: tail_stab 0.74 m^2, tail_fin 2.2 m^2) =====================
+    const double EKTR{ 0.0 };		// tail rotor wash factor (N/A for tandem)
+    const double FSHT{ -187.5 };	    // FS horizontal tail, [inch] (CH-46: on vertical fin at tail)
     const double WLHT{ 90.0 };		// WL horizontal tail, [inch]
     const double iHT{ 9.0 };		// horz tail incidence, [deg]
     const double SAHT{ 7.97 };       // Horizontal tail equivalent area, [ft^2] (0.74 m^2)
@@ -177,7 +177,7 @@ private:
     const double WLVT{ 174.724 };	// WL vertical tail, [inch]
     const double SAVT{ 23.68 };      // Vertical tail equivalent area, [ft^2] (2.2 m^2)
 
-    //============== Tandem Rotor Constants ===============
+    //============== Tandem Rotor Constants (CH-46D: vwv_ch46d_base.lua) ===============
     const double FSRR{ -187.5 }; // rear rotor fuselage station, [in] (-4.7625 m)
     const double WLRR{ 174.724 };  // rear rotor waterline, [in] (4.438 m)
     const double BLRR{ 0.0 };   // rear rotor buttline, [in]
@@ -186,9 +186,11 @@ private:
     const double pitchCollectiveBias{ 3.0 }; // pitch input collective split, [deg]
     const double iSRR{ -7.0 * Convert::degToRad }; // rear shaft tilt, [rad] (forward)
     const double rearRotationSign{ -1.0 }; // rear rotor counter-rotation sign
+    const double tandemInducedPowerFactor{ 1.18 };  // CH-46: ~18% more induced power due to wake interference (thrust_correction 0.85)
+    const double rearRotorWakeFraction{ 0.35 };     // CH-46: ~34% overlap, fraction of front wake reaching rear disk
 
-    //============== Gearbox Constants ==================
-    const double JMR = 6552.0;// combined tandem rotor inertia, [slug-ft2]
+    //============== Gearbox Constants (CH-46D: rotor_MOI 4442 kg*m^2 = 3276 slug*ft^2) ==================
+    const double JMR = 3276.0;// combined tandem rotor inertia, [slug-ft2]
     const double JE = 150.0;//engine (N2 turbine) inertia, [slug-ft^2]
     const double KFRQ = 25.0;// MR torque filter constant
 

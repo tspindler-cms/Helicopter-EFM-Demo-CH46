@@ -4,13 +4,13 @@
 //rotor wash factors
 
 /// Helicopter flight model using blade element analysis
+/// Adapted for CH-46D Sea Knight tandem rotor (vwv_ch46d_base.lua reference)
 /// Source Data: 
-/// 1) NASA TM-78629 (RSRA) -for math model equations
-/// 2) NASA TM-88360 for clutch model
-/// 3) NASA CR-166309 (GenHel) -similar to RSRA with small variations
-/// 4) Helicopter Flight Dynamics by Gareth Padfield 3rd Edition -for generalized fuselage data
-/// 5) Aerodynamic Tests of an Operational OH-6A Helicopter in the Ames Wind Tunnel -for specific Convert to OH-6
-/// 6) NASA CR-3144 for specific constants to OH-6/AH-6
+/// 1) NASA TM-78629 (RSRA) - math model equations
+/// 2) NASA TM-88360 - clutch model
+/// 3) NASA CR-166309 (GenHel) - similar to RSRA
+/// 4) Helicopter Flight Dynamics by Gareth Padfield 3rd Ed. - generalized fuselage data
+/// 5) vwv_ch46d_base.lua - CH-46D geometry, weights, rotor_MOI, centering, tandem efficiency
 /// 
 /*
 Force and velocity units are imperial, angle units are in both radians and degrees.
@@ -823,7 +823,8 @@ void AH6Aero::RearRotorModule()
 
 	double Klambda = KlambdaPrime / p_EFMdata.deltaTime;
 	DWRR = ((Klambda - 1.0) / Klambda) * DWRR + (1.0 / Klambda) * (CTARR / MuTOT);
-	LambdaRR = MuZS - DWRR;
+	// CH-46: rear rotor operates in front rotor wake (thrust_correction 0.85, ~34% overlap)
+	LambdaRR = MuZS - DWRR - rearRotorWakeFraction * DWMR;
 
 	double OmegaRearSigned = rearRotationSign * OmegaRR;
 	double DeltaPsi = OmegaRearSigned * p_EFMdata.deltaTime;
@@ -1042,7 +1043,7 @@ void AH6Aero::RearRotorModule()
 	{
 		Q += (e * FXTRR[b] - MLARR[b] * CosBetaRR[b]) * p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
 	}
-	Q = -Q;
+	Q = -Q * tandemInducedPowerFactor;  // CH-46: tandem wake interference increases rear rotor power demand
 	QMRRear = Q;
 
 	double Q2 = 0.0;
