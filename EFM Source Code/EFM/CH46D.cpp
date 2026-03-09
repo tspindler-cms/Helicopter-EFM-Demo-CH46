@@ -493,7 +493,7 @@ double ed_fm_get_param(unsigned param_enum)
 		return 1;
 
 	case ED_FM_PROPELLER_1_RPM:	// rear rotor RPM for tandem scaffold
-		return Aero.getTRomega() * Convert::radSecToRPM;
+		return -Aero.getTRomega() * Convert::radSecToRPM;
 	case ED_FM_PROPELLER_1_PITCH:  // propeller blade pitch
 
 	case ED_FM_PROPELLER_1_TILT:   // for helicopter

@@ -29,78 +29,84 @@ AH6J = {
 	date_of_introduction =   1989.0,--unsure exact date for AH-6J
 	country_of_origin 	=   "USA",
 	-------------- Aircraft Physical properties -----------
-	length				= 32.06*ftToM, -- [meters]
-	height				= 8.9*ftToM, -- [meters]
-	rotor_RPM			= 475, -- Used for front rotor sound in tandem scaffold
-	tail_rotor_RPM		= 475, -- Repurposed as rear rotor sound channel in tandem scaffold
-	M_empty				= 2550*lbToKg, -- [kg] empty weight (2150lb) + pilots (400lb)
-	M_nominal			= 2900*lbToKg, -- [kg]
-	M_max				= 3950*lbToKg, -- Max gross weight [kg]
-	M_fuel_max			= 401*lbToKg, -- max fuel weight [kg]	401 lb usable main tank, aux tank will be added as external
+	length				= 13.92, -- [meters]
+	height				= 5.08, -- [meters]
+	rotor_RPM			= 264, -- [rpm] front rotor
+	tail_rotor_RPM		= -264, -- [rpm] rear rotor (counter-rotating sign)
+	M_empty				= 5827, -- [kg]
+	M_nominal			= 9435, -- [kg]
+	M_max				= 11022, -- [kg]
+	M_fuel_max			= 1080, -- [kg]
 	RCS					= 3, -- Radar Cross Section m^2
 	IR_emission_coeff	= 0.2, -- 1 is IR emission of Su-27	
 	--MOI 				= {12000, 35000, 40000},
-	nose_gear_pos 		= { 1.416,	-1.729,	0}, -- used for starting placement on ground {forward/back,up/down,left/right}
-	main_gear_pos 		= { -0.719,	-1.62,	0.889},
-	lead_stock_main		= -0.1,--something to do with the AI gear
-	lead_stock_support	= -0.1,--something to do with the AI gear	
+	nose_gear_pos 		= { 5.26663, -1.73, -0.003494}, -- used for starting placement on ground {forward/back,up/down,left/right}
+	main_gear_pos 		= { -2.37379, -1.26, 1.950383},
+	lead_stock_main		= 0.38,
+	lead_stock_support	= 0.28,
 	--sound_name 		= "Rotor", -- rotor sound from Sounds/sdef
-	engines_count		= 1, -- number of engines
+	engines_count		= 2, -- number of engines
 	engines_nozzles 	= 
 	{
 		{
-		engine_number   = 1, -- this nozzle is for engine #1
-		pos     	    = {-1.8,-0.565, 0}, -- important for heatblur and smoke effects
-		diameter        = 0.13, -- [meters]
-		smokiness_level = 0.1,
-		}
+			engine_number   = 1,
+			pos     	    = {-4.0627, 2.042, -0.7},
+			diameter        = 0.55,
+			smokiness_level = 0.1,
+		},
+		{
+			engine_number   = 2,
+			pos     	    = {-4.0627, 2.042, 0.7},
+			diameter        = 0.55,
+			smokiness_level = 0.1,
+		},
 	},
 	
 	------------- AI definitions (also affects Mission Editor i.e. max speed to set at waypoint) ------------------------------
-	V_max				=	152*knotToKMpH, -- [km/h] max speed for AI
-	V_max_cruise		=	130*knotToKMpH,	-- cruise speed [km/h]
-	Vy_max				=	10.5, --Max climb speed in [m/s]
-	H_stat_max_L		=	15000*ftToM,-- max height hover (with ground effect) [m]
-	H_stat_max			=	15000*ftToM,-- max height hover [m]
-	H_din_two_eng		=	18000*ftToM,-- max height forward flight (2 engine) [m]
-	H_din_one_eng		=	18000*ftToM,-- max height forward flight (1 engine) [m]
-	range				=	430, -- max range [km], for AI
-	flight_time_typical	=	90,-- minutes
-	flight_time_maximum	=	180,-- minutes
-	Vy_land_max			=	20*knotToMpS, -- landing speed [m/s]
-	Ny_max				=	3.5, --max G for AI
+	V_max				=	267.0, -- [km/h] max speed for AI
+	V_max_cruise		=	225, -- [km/h]
+	Vy_max				=	10.4, -- [m/s]
+	H_stat_max_L		=	4267, -- [m]
+	H_stat_max			=	2600, -- [m]
+	H_din_two_eng		=	5180, -- [m]
+	H_din_one_eng		=	1450, -- [m]
+	range				=	370, -- [km]
+	flight_time_typical	=	120, -- [min]
+	flight_time_maximum	=	135, -- [min]
+	Vy_land_max			=	2.0, -- [m/s]
+	Ny_max				=	2.5, -- [g]
 	scheme				=	2,-- 0 normal, 1 coaxial, 2 tandem
 	----- AI flight model probably (doesnt affect human FM)
-	rotor_height		=	7.67*ftToM,-- height of rotor from ground [meters]
-	rotor_diameter		=	27.35*ftToM,-- [meters]
-	blade_chord			=	0.171,-- [meters]
-	blades_number		=	5,
-	blade_area			=	0.712, -- [m^2]
-	fuselage_Cxa0		=	0.4,-- drag coefficient
-	fuselage_Cxa90		=	3,-- side drag coefficient?
-	fuselage_area		=	1.4, -- [m^2]
-	centering			=	0,-- for tandem rotors, differential collective pitch offset in [degrees]. Negative value=lower rear collective compared to front collective
-	tail_pos 			= 	{-4.564,	0.163,	0},
-	tail_fin_area		=	0.467,-- vertical fin area [m^2]
-	tail_stab_area		=	0.66,-- horizontal tail area [m^2]
-	thrust_correction	=	0.55,
-	rotor_MOI			=	1500,
-	rotor_pos 			= 	{0,	0.86, 0},
+	rotor_height		=	3.0342, -- [m]
+	rotor_diameter		=	15.24, -- [m]
+	blade_chord			=	0.387, -- [m]
+	blades_number		=	6, -- 3 blades per rotor, 6 total
+	blade_area			=	2.95, -- [m^2]
+	fuselage_Cxa0		=	0.30,
+	fuselage_Cxa90		=	4.38,
+	fuselage_area		=	9.34, -- [m^2]
+	centering			=	-5.393, -- baseline differential collective pitch [deg]
+	tail_pos 			= 	{-4.7625, 4.438, 0},
+	tail_fin_area		=	2.2,
+	tail_stab_area		=	0.74,
+	thrust_correction	=	0.85,
+	rotor_MOI			=	4442,
+	rotor_pos 			= 	{5.5208, 3.0342, 0},
 
 	engine_data = 
 	{  -- these are only for AI (except the sound_name)
-		power_take_off = 480,-- [kW]
-		power_max	   = 480,-- [kW]
-		power_WEP	   = 480,-- [kW]
+		power_take_off = 1044, -- [kW]
+		power_max	   = 932, -- [kW]
+		power_WEP	   = 1044, -- [kW]
 		power_TH_k     = { -- power change from altitude
-			[1] = {0,	-230.8,	2245.6},
-			[2] = {0,	-230.8,	2245.6},
-			[3] = {0,	-325.4,	2628.9},
-			[4] = {0,	-235.6,	1931.9},
+			[1] = {4.494, -118.00, 1044.0},
+			[2] = {4.494, -118.00, 1044.0},
+			[3] = {4.012, -105.35, 932.0},
+			[4] = {3.130, -82.17, 727.0},
 		},
-		SFC_k = {2.045e-007, -0.0006328, 0.803},-- Specific fuel consumption (probably polynomial coefs.)
-		power_RPM_k = 	{-0.08639,	0.24277,	0.84175},-- power vs RPM (probably polynomial coefs.)
-		power_RPM_min	=	9.1384,
+		SFC_k = {0.0, -1.180e-005, 0.3710},
+		power_RPM_k = 	{-0.1150, 0.2750, 0.8400},
+		power_RPM_min	=	45.0,
 		--sound_name	= "EngineTV3117", -- engine sound from Sounds/sdef
 	},
 	

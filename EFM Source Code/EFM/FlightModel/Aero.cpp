@@ -131,11 +131,12 @@ void AH6Aero::TandemRotorControlMix(double& thetaFront, double& thetaRear,
 	// - pitch input adds a small fore/aft collective split
 	// - roll/cyclic is fed to both rotors
 	const double baseCollectiveDeg = p_flightControl.CollectiveInput * 19.0 + 2.0;
+	const double frontRearBias = 0.5 * centeringDCP;
 	const double pedalSplitDeg = p_flightControl.PedalInput * rearCollectiveAuthority;
 	const double pitchSplitDeg = p_flightControl.pitchOutput * pitchCollectiveBias;
 
-	thetaFront = baseCollectiveDeg + pedalSplitDeg - pitchSplitDeg;
-	thetaRear = baseCollectiveDeg - pedalSplitDeg + pitchSplitDeg;
+	thetaFront = baseCollectiveDeg - frontRearBias + pedalSplitDeg - pitchSplitDeg;
+	thetaRear = baseCollectiveDeg + frontRearBias - pedalSplitDeg + pitchSplitDeg;
 
 	a1Front = p_flightControl.rollOutput * 8.0;
 	a1Rear = p_flightControl.rollOutput * 8.0;

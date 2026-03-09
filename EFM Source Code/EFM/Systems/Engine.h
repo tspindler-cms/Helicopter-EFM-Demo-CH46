@@ -14,7 +14,7 @@
 // engine data tables
 constexpr static const int _N1_Points = 9;
 static double _N1percent[_N1_Points] = { 0.0, 20.0,  62.0,  80.0,  95.0,  98.0,  100.0,  105.0, 106.0};
-static double _HP_data[_N1_Points] =   { 0.0,  0.0,  45.0, 135.0, 312.0, 370.0,  400.0,  425.0, 575.0};
+static double _HP_data[_N1_Points] =   { 0.0, 0.0, 420.0, 1150.0, 2200.0, 2550.0, 2800.0, 2950.0, 3200.0};
 
 class TurboshaftEngine
 {
@@ -95,8 +95,8 @@ public:
         N1Cmd = 75.0;
         N1rate = 15.0;
         fuelFlow = 0.0;
-        Torque_PSI = 15.0;
-        engTorque_ftlb = 1400.0;
+        Torque_PSI = 40.0;
+        engTorque_ftlb = 30000.0;
         oilTemp = 50.0;
         oilPressure = 85.0;
         TOTcmd = 600.0;
@@ -133,7 +133,7 @@ public:
     }
     double getTorqueRelative()
     {
-        return Torque_PSI / 59.0;
+        return Torque_PSI / 100.0;
     }
     double getFuelFlow()// [kg/hr]
     {
@@ -245,7 +245,7 @@ public:
              //-----------------------------------------------------------------------------------
 
             // the manual only lists 78lb/h at 65% and 138lb/hr at 79%. max FF is 300lb/hr
-            fuelFlow = LinInterp(N1_PCT, ENG_RPM_IDLE_PCT, ENG_RPM_MAX_LIMIT_PCT, 78.0, 300.0);
+            fuelFlow = LinInterp(N1_PCT, ENG_RPM_IDLE_PCT, ENG_RPM_MAX_LIMIT_PCT, 300.0, 1300.0);
 
             updateTOT();
             break;
@@ -263,7 +263,7 @@ public:
         engTorque_ftlb = EnginePower_HP * 550.0 / OmegaT;//engine torque conversion for HP, [lb-ft]
         
         //conversion for torque[lb-ft] to pressure[psi] based on chapter 7 in manual, says 500shp=70psi & 575=80.9psi. 500hp=5529ftlb; 575hp=6358ftlb <- what page??
-        Torque_PSI = EnginePower_HP * (59.0 / 425.0);// conversion from fig.7-33 (pg.7-19)
+        Torque_PSI = EnginePower_HP * (100.0 / 2800.0);// CH-46D reference scale (2x1400 SHP nominal total)
         cockpitAPI.setParamNumber(ENGINE_TRQ, Torque_PSI);
 
 

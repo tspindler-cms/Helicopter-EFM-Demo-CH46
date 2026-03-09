@@ -18,9 +18,9 @@
 
 
 #define NUM_BLADE_SEGMENTS 8
-#define NUM_BLADES 5
+#define NUM_BLADES 3
 //#define USE_LAG_DOF
-static const double OmegaT = 49.7419; //main rotor nominal rotational velocity, [rad/sec] (475 RPM = 49.741884 rad/s)
+static const double OmegaT = 27.6460; // nominal rotor rotational velocity, [rad/sec] (264 RPM)
 
 class AH6Aero
 {
@@ -131,23 +131,23 @@ public:
 
 private:
     //============== Overall constants ============== 
-    const double FSCG{ 100 };		//Center of Gravity Fuselage Station position(longitudinal;x), [inch]
-    const double WLCG{ 49.6 };		//Center of Gravity Waterline position(vertical;z), [inch]
+    const double FSCG{ 0.0 };		//Center of Gravity Fuselage Station position(longitudinal;x), [inch]
+    const double WLCG{ 0.0 };		//Center of Gravity Waterline position(vertical;z), [inch]
     const double BLCG{ 0.0 };		//Center of Gravity Buttline position(lateral;y), [inch]
     //============== Main rotor constants ============== 
-    const double RMR{ 13.167 };				// main rotor radius, [ft]
+    const double RMR{ 25.0 };				// main rotor radius, [ft] (15.24 m diameter)
     const double BLMR{ 0.0 };				// buttline pos(left/right) MR, [inch]
-    const double FSMR{ 100.0 };				// fuselage station MR, [inch]
-    const double WLMR{ 83.0 };				// waterline MR, [inch]
+    const double FSMR{ 217.354 };			// fuselage station MR, [inch] (5.5208 m)
+    const double WLMR{ 119.457 };			// waterline MR, [inch] (3.0342 m)
     const double BMR{ 0.97 };				// MR blade tip loss factor
-    const double CR{ 0.5625 };				// blade root chord, [ft]
+    const double CR{ 1.2697 };				// blade chord, [ft] (0.387 m)
     const double e{ 0.46 };					// MR flap hinge offset, [ft]         this affects how strong the moments are on the hub
     const double ePrime{ 1.125 };			// distance from hinge to blade start, [ft]   this affects amount of blade area  
-    const double Ib{ 85.0 };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
-    const double Mb{ 3.5 };				    // blade first mass moment about hinge, slugs [ft]   lower==more stable, higher==more control  
-    const double Wb{ 40.0 };				// blade weight, [lb] 37.25
+    const double Ib{ 1044.0 };				// main rotor blade inertia about hinge, slugs [ft^2]
+    const double Mb{ 120.4 };				// blade first mass moment about hinge, slugs [ft]
+    const double Wb{ 155.0 };				// blade weight, [lb]
     const double Theta1{ -8.0 };				//main rotor blade twist, [deg/unit radius]
-    const double iS{ -3.0 * Convert::degToRad }; // MR shaft tilt, rad (negative=forward)  
+    const double iS{ -9.51 * Convert::degToRad }; // front shaft tilt, [rad] (forward)
     const double Kbeta{ 0.0 };				    //flapping hinge spring const, [ft lb/rad]    // this is 0 for articulated rotors
     const double KbetaDot{ 0.0 };				//flapping hinge rate damp const, [ft lb sec/rad]
     const double betaUp{ 25.0 * Convert::degToRad };   // blade flapping upper limit, [rad]
@@ -164,30 +164,31 @@ private:
 
 
     //============== Fuselage constants =================
-    const double SPF{ 26.0 };       // Plan (front) area of fuselage, [ft^2]
-    const double SSF{ 60.0 };       // Side area of fuselage, [ft^2]
+    const double SPF{ 100.54 };       // Frontal reference area, [ft^2] (9.34 m^2)
+    const double SSF{ 230.0 };        // Effective side area, [ft^2]
 
     //============== Tail constants =====================
     const double EKTR{ 0.0 };		// tail rotor wash factor on vert tail
     const double FSHT{ 290.0 };	    // FS horizontal tail, [inch]
     const double WLHT{ 90.0 };		// WL horizontal tail, [inch]
     const double iHT{ 9.0 };		// horz tail incidence, [deg]
-    const double SAHT{ 8.5 };       // Horizontal tail surface area, [ft^2] (7.5)
-    const double FSVT{ 285.0 };		// FS vertical tail, [inch]
-    const double WLVT{ 56.0 };		// WL vertical tail, [inch]
-    const double SAVT{ 9.6 };         // Vertical tail surface area, [ft^2]
+    const double SAHT{ 7.97 };       // Horizontal tail equivalent area, [ft^2] (0.74 m^2)
+    const double FSVT{ -187.5 };	// FS vertical tail, [inch]
+    const double WLVT{ 174.724 };	// WL vertical tail, [inch]
+    const double SAVT{ 23.68 };      // Vertical tail equivalent area, [ft^2] (2.2 m^2)
 
     //============== Tandem Rotor Constants ===============
-    const double FSRR{ 220.0 }; // rear rotor fuselage station, [in], TODO tune for CH-46 geometry
-    const double WLRR{ 86.0 };  // rear rotor waterline, [in], TODO tune for CH-46 geometry
+    const double FSRR{ -187.5 }; // rear rotor fuselage station, [in] (-4.7625 m)
+    const double WLRR{ 174.724 };  // rear rotor waterline, [in] (4.438 m)
     const double BLRR{ 0.0 };   // rear rotor buttline, [in]
+    const double centeringDCP{ -5.393 }; // baseline front-rear differential collective [deg]
     const double rearCollectiveAuthority{ 4.0 }; // pedal-to-collective differential, [deg]
     const double pitchCollectiveBias{ 3.0 }; // pitch input collective split, [deg]
-    const double iSRR{ 3.0 * Convert::degToRad }; // rear shaft tilt, rad (positive=aft)
+    const double iSRR{ -7.0 * Convert::degToRad }; // rear shaft tilt, [rad] (forward)
     const double rearRotationSign{ -1.0 }; // rear rotor counter-rotation sign
 
     //============== Gearbox Constants ==================
-    const double JMR = 600.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
+    const double JMR = 6552.0;// combined tandem rotor inertia, [slug-ft2]
     const double JE = 150.0;//engine (N2 turbine) inertia, [slug-ft^2]
     const double KFRQ = 25.0;// MR torque filter constant
 
