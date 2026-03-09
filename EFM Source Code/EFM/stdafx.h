@@ -6,7 +6,15 @@
 #pragma once
 
 // Including SDKDDKVer.h defines the highest available Windows platform.
+#if defined(__has_include)
+#if __has_include(<SDKDDKVer.h>)
 #include <SDKDDKVer.h>
+#elif __has_include(<sdkddkver.h>)
+#include <sdkddkver.h>
+#endif
+#else
+#include <SDKDDKVer.h>
+#endif
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
