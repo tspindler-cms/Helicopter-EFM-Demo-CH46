@@ -11,7 +11,7 @@ encyclopedia_path = current_mod_path..'/Encyclopedia',
 
 binaries =
 { 
-'AH6J',
+'CH46D',
 },
 Skins =
 {
@@ -68,7 +68,7 @@ make_view_settings('AH-6J', ViewSettings, SnapViews)
 local cfg_path = current_mod_path.."/FM_Config.lua"
 dofile(cfg_path)
 EFM[1] 				= self_ID
-EFM[2] 				= 'AH6J'
+EFM[2] 				= 'CH46D'
 EFM.config_path 	= cfg_path
 
 make_flyable('AH-6J',current_mod_path..'/Cockpit/Scripts/', EFM, current_mod_path..'/comm.lua')

@@ -8,7 +8,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'EOF'
 Usage: ./build_macos_cross.sh [make args...]
 
-Cross-builds the AH6J Windows DLL from macOS using MinGW-w64.
+Cross-builds the CH46D Windows DLL from macOS using MinGW-w64.
 
 Examples:
   ./build_macos_cross.sh

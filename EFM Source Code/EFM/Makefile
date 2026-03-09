@@ -5,7 +5,7 @@ CXX := x86_64-w64-mingw32-g++
 endif
 
 OUT_DIR := ../../bin
-TARGET := $(OUT_DIR)/AH6J.dll
+TARGET := $(OUT_DIR)/CH46D.dll
 
 SOURCES := \
 	dllmain.cpp \
