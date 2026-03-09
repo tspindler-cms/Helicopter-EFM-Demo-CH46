@@ -183,8 +183,8 @@ private:
     const double BLRR{ 0.0 };   // rear rotor buttline, [in]
     const double rearCollectiveAuthority{ 4.0 }; // pedal-to-collective differential, [deg]
     const double pitchCollectiveBias{ 3.0 }; // pitch input collective split, [deg]
-    const double rearCTGain{ 0.00115 }; // collective to Ct gain (scaffold), [1/deg]
-    const double rearProfileDrag{ 0.012 }; // profile drag share (scaffold)
+    const double iSRR{ 3.0 * Convert::degToRad }; // rear shaft tilt, rad (positive=aft)
+    const double rearRotationSign{ -1.0 }; // rear rotor counter-rotation sign
 
     //============== Gearbox Constants ==================
     const double JMR = 600.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
@@ -259,12 +259,49 @@ private:
     double VZIWU = 0.0;     //wing downwash velocity at upper HT, z axis, [ft/s]
     double VYIW = 0.0;      //wing sidewash velocity at VT, y axis, [ft/s]
 
-    // rear rotor variable setup
+    // rear rotor variable setup (full blade element)
     double OmegaRR = 0.0;   // rear rotor rotational velocity [rad/s]
     double PsiRR = 0.0;     // rear rotor azimuth, -pi to pi [rad]
+    double LambdaRR = 0.0;  // rear rotor inflow
+    double CTARR = 0.0;     // rear rotor thrust coefficient
+    double DWRR = 0.0;      // rear rotor downwash
+    double skewAngleRR = 0.0;
     double rearCollectiveDeg = 0.0; // commanded rear rotor collective [deg]
     double frontCollectiveDeg = 0.0; // commanded front rotor collective [deg]
-    double rearRotorThrust_lb = 0.0; // simplified rear rotor thrust [lb]
+
+    double PsiRR_blades[NUM_BLADES] = { 0.0 };
+    double SinPsiRR[NUM_BLADES] = { 0.0 };
+    double CosPsiRR[NUM_BLADES] = { 0.0 };
+    double SinBetaRR[NUM_BLADES] = { 0.0 };
+    double CosBetaRR[NUM_BLADES] = { 0.0 };
+    double SinDeltRR[NUM_BLADES] = { 0.0 };
+    double CosDeltRR[NUM_BLADES] = { 0.0 };
+    double BetaDotDotRR[NUM_BLADES] = { 0.0 };
+    double BetaDotRR[NUM_BLADES] = { 0.0 };
+    double BetaRR[NUM_BLADES] = { 0.0 };
+    double DeltDotDotRR[NUM_BLADES] = { 0.0 };
+    double DeltDotRR[NUM_BLADES] = { 0.0 };
+    double DeltRR[NUM_BLADES] = { 0.0 };
+    double UPRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double UTRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double URRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double ThetaRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double alphaTransRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double CLYRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double CDYRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double FPRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double FTRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double FRRR[NUM_BLADES][NUM_BLADE_SEGMENTS] = { 0.0 };
+    double FXARR[NUM_BLADES] = { 0.0 };
+    double FYARR[NUM_BLADES] = { 0.0 };
+    double FZARR[NUM_BLADES] = { 0.0 };
+    double MFARR[NUM_BLADES] = { 0.0 };
+    double MLARR[NUM_BLADES] = { 0.0 };
+    double MFDRR[NUM_BLADES] = { 0.0 };
+    double MLDRR[NUM_BLADES] = { 0.0 };
+    double FXTRR[NUM_BLADES] = { 0.0 };
+    double FYTRR[NUM_BLADES] = { 0.0 };
+    double FZTRR[NUM_BLADES] = { 0.0 };
 
 
     // Body states
@@ -284,7 +321,9 @@ private:
     double ThetaB = 0.0; // pitch, [rad]
 
     // Rotor Degree Of Freedom (DOF)
-    double QMR = 0.0;// MR torque shaft axis, [ft-lb]
+    double QMR = 0.0;// total tandem rotor torque shaft axis, [ft-lb]
+    double QMRFront = 0.0;// front rotor torque, [ft-lb]
+    double QMRRear = 0.0;// rear rotor torque, [ft-lb]
     double QMRfiltered = 0.0;// filtered MR torque, [ft-lb]
     bool isClutchEngaged = true;
     double OmegaE = 0.0;//engine shaft speed (N2), [rad/sec]

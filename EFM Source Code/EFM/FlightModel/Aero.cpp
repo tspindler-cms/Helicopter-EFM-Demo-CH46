@@ -53,7 +53,8 @@ void AH6Aero::Initialize()
 
 	frontCollectiveDeg = 0.0;
 	rearCollectiveDeg = 0.0;
-	rearRotorThrust_lb = 0.0;
+	QMRFront = 0.0;
+	QMRRear = 0.0;
 }
 	
 void AH6Aero::InitializeOff()
@@ -61,27 +62,61 @@ void AH6Aero::InitializeOff()
 	Omega = 0.0;
 	OmegaRR = 0.0;
 	OmegaE = 0.0;
+	PsiMR = 0.0;
 	PsiRR = 0.0;
 	LambdaMR = 0.0;
+	LambdaRR = 0.0;
 	CTA = 0.01;
+	CTARR = 0.01;
 	DWMR = 0.01;
+	DWRR = 0.01;
+	QMRFront = 0.0;
+	QMRRear = 0.0;
+	for (int b = 0; b < NUM_BLADES; ++b)
+	{
+		Beta[b] = 0.0;
+		BetaDot[b] = 0.0;
+		BetaDotDot[b] = 0.0;
+		Delt[b] = 0.0;
+		DeltDot[b] = 0.0;
+		DeltDotDot[b] = 0.0;
+		BetaRR[b] = 0.0;
+		BetaDotRR[b] = 0.0;
+		BetaDotDotRR[b] = 0.0;
+		DeltRR[b] = 0.0;
+		DeltDotRR[b] = 0.0;
+		DeltDotDotRR[b] = 0.0;
+		for (int s = 0; s < NUM_BLADE_SEGMENTS; ++s)
+		{
+			UP[b][s] = 0.0;
+			UT[b][s] = 0.0;
+			UR[b][s] = 0.0;
+			UPRR[b][s] = 0.0;
+			UTRR[b][s] = 0.0;
+			URRR[b][s] = 0.0;
+		}
+	}
 }
 
 void AH6Aero::InitializeOn()
 {
+	InitializeOff();
 	Omega = OmegaT;
 	OmegaRR = OmegaT;
 	OmegaE = OmegaT;
-	PsiRR = 0.0;
 	LambdaMR = -0.022;
+	LambdaRR = -0.022;
 	CTA = 0.014;
+	CTARR = 0.014;
 	DWMR = 0.022;
+	DWRR = 0.022;
 }
 
 void AH6Aero::update(double engtorque)
 {
 	MainRotorModule();
 	RearRotorModule();
+	QMR = abs(QMRFront) + abs(QMRRear);
 	FuselageModule();
 	EmpennageModule();
 	RotorDegreeOfFreedom(engtorque);
@@ -487,7 +522,7 @@ void AH6Aero::MainRotorModule()
 		Q += (e * FXT[b] - MLA[b] * CosBeta[b])* p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];// if no lag DOF
 	}
 	Q = -Q;
-	QMR = Q;
+	QMRFront = Q;
 
 	double Q2 = 0.0;//MR torque shaft axis, [ft-lb]
 	for (int b = 0; b < NUM_BLADES; b++)
@@ -743,60 +778,297 @@ void AH6Aero::RearRotorModule()
 	TandemRotorControlMix(ThetaFront, ThetaRear, A1Front, A1Rear, B1Front, B1Rear);
 	(void)ThetaFront;
 	(void)A1Front;
-	(void)A1Rear;
 	(void)B1Front;
-	(void)B1Rear;
 	rearCollectiveDeg = ThetaRear;
 
-	const double lRR = (FSRR - FSCG) / 12.0;
-	const double hRR = (WLRR - WLCG) / 12.0;
-	const double bRR = (BLRR - BLCG) / 12.0;
+	double Weight = p_EFMdata.mass_kg * Convert::kg_to_lb;
+	double Wbd = Weight - NUM_BLADES * Wb;
+	double FSCGB = (FSCG * Weight - NUM_BLADES * FSRR * Wb) / Wbd;
+	double WLCGB = (WLCG * Weight - NUM_BLADES * WLRR * Wb) / Wbd;
+	double BLCGB = (BLCG * Weight - NUM_BLADES * BLRR * Wb) / Wbd;
+	const double lRR = (FSCGB - FSRR) / 12.0;
+	const double bRR = (BLCGB - BLRR) / 12.0;
+	const double hRR = (WLCGB - WLRR) / 12.0;
 
-	double VXRR = VXB - q * hRR + r * bRR;
-	double VYRR = VYB - r * lRR + p * hRR;
-	double VZRR = VZB + q * lRR - p * bRR;
-	double speedRR = sqrt(VXRR * VXRR + VYRR * VYRR + VZRR * VZRR);
-	double muRR = speedRR / (OmegaT * RMR);
+	// body translational accelerations at the rear rotor hub
+	double VXHDot = VXBDot - r * VYB + q * VZB - lRR * (q * q + r * r) + bRR * (p * q - rDot) + hRR * (p * r + qDot) + Convert::gravity_fts2 * sin(ThetaB);
+	double VYHDot = VYBDot - p * VZB + r * VXB + lRR * (p * q + rDot) - bRR * (p * p + r * r) + hRR * (q * r - pDot) - Convert::gravity_fts2 * sin(PhiB) * cos(ThetaB);
+	double VZHDot = VZBDot - q * VXB + p * VYB + lRR * (p * r - qDot) + bRR * (q * r + pDot) - hRR * (p * p + q * q) - Convert::gravity_fts2 * cos(PhiB) * cos(ThetaB);
 
-	// Low-fidelity rear rotor scaffold model. This is intentionally simple and
-	// intended as a starting point for CH-46 tuning.
-	double ctRear = limit((ThetaRear - 2.0) * rearCTGain, -0.02, 0.03);
-	double ctRearDyn = ctRear * (1.0 - 0.25 * limit(muRR, 0.0, 1.0));
-	rearRotorThrust_lb = 2.0 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 4) * M_PI * ctRearDyn;
-	double rearThrustHealthy = rearRotorThrust_lb * p_Damage.elementIntegrity[BLADE_5_CENTER];
+	// body translational velocities at rear rotor hub
+	double MuXH = (VXB + q * hRR - r * bRR) / (OmegaT * RMR);
+	double MuYH = (VYB - p * hRR + r * lRR) / (OmegaT * RMR);
+	double MuZH = (VZB - q * lRR + p * bRR) / (OmegaT * RMR);
 
-	double XRR = rearProfileDrag * 0.5 * p_EFMdata.rho_SlgFt3 * VXRR * abs(VXRR);
-	double YRR = 0.0;
-	double ZRR = -rearThrustHealthy;
+	// body axis to rear shaft axis transform
+	double VXSDot = VXHDot * cos(iSRR) - VZHDot * sin(iSRR);
+	double VYSDot = VYHDot;
+	double VZSDot = VXHDot * sin(iSRR) + VZHDot * cos(iSRR);
+	double pDotS = pDot * cos(iSRR) - rDot * sin(iSRR);
+	double qDotS = qDot;
+	double rDotS = pDot * sin(iSRR) + rDot * cos(iSRR);
+	double MuXS = MuXH * cos(iSRR) - MuZH * sin(iSRR);
+	double MuYS = MuYH;
+	double MuZS = MuXH * sin(iSRR) + MuZH * cos(iSRR);
+	double pS = p * cos(iSRR) - r * sin(iSRR);
+	double qS = q;
+	double rS = p * sin(iSRR) + r * cos(iSRR);
 
-	ForceComponent rearRotorForce;
-	rearRotorForce.dir.x = XRR * Convert::lbf_to_N;
-	rearRotorForce.dir.y = -ZRR * Convert::lbf_to_N;
-	rearRotorForce.dir.z = YRR * Convert::lbf_to_N;
-	rearRotorForce.pos.x = -lRR * Convert::feetToMeter;
-	rearRotorForce.pos.y = hRR * Convert::feetToMeter;
-	rearRotorForce.pos.z = bRR * Convert::feetToMeter;
-	aeroForces.push_back(rearRotorForce);
+	double MuTOT = sqrt(MuXS * MuXS + MuYS * MuYS + LambdaRR * LambdaRR);
+	MuTOT = limit(MuTOT, 0.0001, 100.0);
+	double KGL = sqrt(pow(MuXS, 2) + pow(MuYS, 2)) / MuTOT;
+	double K1X = KGL * (MuXS / MuTOT);
+	double K1Y = KGL * (MuYS / MuTOT);
 
-	// Differential collective between front and rear rotors is the tandem yaw source.
-	double diffCollective = frontCollectiveDeg - rearCollectiveDeg;
-	double yawMoment = diffCollective * 500.0; // [ft-lb], scaffold gain
-	Vec3 rearRotorMoment;
-	rearRotorMoment.x = 0.0;
-	rearRotorMoment.y = -yawMoment * Convert::lbft_to_Nm;
-	rearRotorMoment.z = 0.0;
-	aeroMoments.push_back(rearRotorMoment);
+	double Klambda = KlambdaPrime / p_EFMdata.deltaTime;
+	DWRR = ((Klambda - 1.0) / Klambda) * DWRR + (1.0 / Klambda) * (CTARR / MuTOT);
+	LambdaRR = MuZS - DWRR;
 
-	// Feed rear rotor induced torque into drivetrain DOF so governor has tandem load.
-	double qRear = abs(rearThrustHealthy) * RMR * 0.04;
-	QMR += qRear;
-
-	double DeltaPsi = OmegaRR * p_EFMdata.deltaTime;
+	double OmegaRearSigned = rearRotationSign * OmegaRR;
+	double DeltaPsi = OmegaRearSigned * p_EFMdata.deltaTime;
 	PsiRR += DeltaPsi;
 	if (PsiRR > M_PI)
 	{
 		PsiRR -= 2.0 * M_PI;
 	}
+	else if (PsiRR < -M_PI)
+	{
+		PsiRR += 2.0 * M_PI;
+	}
+
+	PsiRR_blades[0] = PsiRR;
+	for (int b = 1; b < NUM_BLADES; b++)
+	{
+		PsiRR_blades[b] = PsiRR_blades[b - 1] + 2.0 * M_PI / NUM_BLADES;
+		if (PsiRR_blades[b] > M_PI)
+		{
+			PsiRR_blades[b] -= 2.0 * M_PI;
+		}
+	}
+
+	double Z_rotor = limit(p_EFMdata.altitudeAGL_ft + (WLRR - WLCG) / 12.0, 1.0, 1000.0);
+	double Kge = limit(pow(1.0 + 0.13 * pow(RMR / Z_rotor, 2) * LambdaRR / sqrt(pow(MuXS, 2) + pow(MuYS, 2) + pow(LambdaRR, 2)), -2.0 / 3.0), 1.0, 1.5);
+
+	for (int b = 0; b < NUM_BLADES; b++)
+	{
+		SinPsiRR[b] = sin(PsiRR_blades[b]);
+		CosPsiRR[b] = cos(PsiRR_blades[b]);
+
+		double OmegaB = limit(abs(OmegaRearSigned), OmegaT / 10.0, OmegaT * 5.0);
+		BetaRR[b] = BetaRR[b] + BetaDotRR[b] * sin(DeltaPsi) / OmegaB + BetaDotDotRR[b] * (1.0 - cos(DeltaPsi)) / pow(OmegaB, 2);
+		BetaRR[b] = limit(BetaRR[b], betaDown, betaUp);
+
+		BetaDotRR[b] = BetaDotRR[b] * cos(DeltaPsi) + BetaDotDotRR[b] * sin(DeltaPsi) / OmegaB;
+		BetaDotRR[b] = limit(BetaDotRR[b], -50.0, 50.0);
+
+		BetaDotDotRR[b] = (Mb / Ib) * (cos(BetaRR[b]) * (VZSDot + e * (2.0 * OmegaRearSigned * (pS * CosPsiRR[b] - qS * SinPsiRR[b]) + pDotS * SinPsiRR[b] + qDotS * CosPsiRR[b])) + sin(BetaRR[b]) * cos(DeltRR[b]) * (VYSDot * SinPsiRR[b] - VXSDot * CosPsiRR[b] - e * pow(OmegaRearSigned - rS, 2)) + sin(DeltRR[b]) * sin(BetaRR[b]) * (VXSDot * SinPsiRR[b] + VYSDot * CosPsiRR[b] - e * (rDotS - OmegaDot)))
+			+ pow(cos(BetaRR[b]), 2) * (cos(DeltRR[b]) * (pDotS * SinPsiRR[b] + qDotS * CosPsiRR[b] - 2.0 * (DeltDotRR[b] + OmegaRearSigned) * (qS * SinPsiRR[b] - pS * CosPsiRR[b])) - sin(DeltRR[b]) * (2.0 * (OmegaRearSigned + DeltDotRR[b]) * (pS * SinPsiRR[b] + qS * CosPsiRR[b]) + qDotS * SinPsiRR[b] - pDotS * CosPsiRR[b]))
+			+ cos(BetaRR[b]) * sin(BetaRR[b]) * (2.0 * DeltDotRR[b] * (rS - OmegaRearSigned) - pow(OmegaRearSigned - rS, 2) - pow(DeltDotRR[b], 2))
+			+ (MFARR[b] / Ib) + (MFDRR[b] / Ib);
+		BetaDotDotRR[b] = limit(BetaDotDotRR[b], -2000.0, 2000.0);
+
+		SinBetaRR[b] = sin(BetaRR[b]);
+		CosBetaRR[b] = cos(BetaRR[b]);
+
+#ifdef USE_LAG_DOF
+		DeltRR[b] = DeltRR[b] + DeltDotRR[b] * sin(DeltaPsi) / OmegaB + DeltDotDotRR[b] * (1.0 - cos(DeltaPsi)) / pow(OmegaB, 2);
+		DeltRR[b] = limit(DeltRR[b], deltAFT, deltFWD);
+
+		DeltDotRR[b] = DeltDotRR[b] * cos(DeltaPsi) + DeltDotDotRR[b] * sin(DeltaPsi) / OmegaB;
+		DeltDotRR[b] = limit(DeltDotRR[b], -500.0, 500.0);
+
+		DeltDotDotRR[b] = (Mb / (Ib * cos(BetaRR[b]))) * (sin(DeltRR[b]) * (VYSDot * SinPsiRR[b] - VXSDot * CosPsiRR[b] - e * pow(OmegaRearSigned - rS, 2)) - cos(DeltRR[b]) * (VXSDot * SinPsiRR[b] + VYSDot * CosPsiRR[b] + e * (OmegaDot - rDotS)))
+			+ (sin(BetaRR[b]) / cos(BetaRR[b])) * (2.0 * BetaDotRR[b] * (OmegaRearSigned + DeltDotRR[b] - rS) + qDotS * sin(PsiRR_blades[b] + DeltRR[b]) - pDotS * cos(PsiRR_blades[b] + DeltRR[b])) + (rDotS - OmegaDot)
+			+ 2.0 * BetaDotRR[b] * (cos(DeltRR[b]) * (qS * SinPsiRR[b] - pS * CosPsiRR[b]) + sin(DeltRR[b]) * (pS * SinPsiRR[b] + qS * CosPsiRR[b]))
+			- MLARR[b] / (Ib * cos(BetaRR[b])) - MLDRR[b] / (Ib * cos(BetaRR[b]));
+		DeltDotDotRR[b] = limit(DeltDotDotRR[b], -2000.0, 2000.0);
+#endif
+		SinDeltRR[b] = sin(DeltRR[b]);
+		CosDeltRR[b] = cos(DeltRR[b]);
+
+		for (int s = 0; s < NUM_BLADE_SEGMENTS; s++)
+		{
+			UPRR[b][s] = LambdaRR * CosBetaRR[b] + MuYS * SinBetaRR[b] * sin(PsiRR_blades[b] + DeltRR[b]) - MuXS * SinBetaRR[b] * cos(PsiRR_blades[b] + DeltRR[b])
+				+ XI * CosBetaRR[b] * ((qS / OmegaT - K1X * DWRR) * CosPsiRR[b] + (pS / OmegaT + K1Y * DWRR) * SinPsiRR[b])
+				+ XI * SinBetaRR[b] * SinDeltRR[b] * ((OmegaRearSigned - rS) / OmegaT)
+				+ Y2[s] * (-(BetaDotRR[b] / OmegaT) + (qS / OmegaT - K1X * DWRR * CosBetaRR[b]) * cos(PsiRR_blades[b] + DeltRR[b]) + (pS / OmegaT + K1Y * DWRR * CosBetaRR[b]) * sin(PsiRR_blades[b] + DeltRR[b]));
+
+			UTRR[b][s] = MuXS * sin(PsiRR_blades[b] + DeltRR[b]) + MuYS * cos(PsiRR_blades[b] + DeltRR[b])
+				+ XI * CosDeltRR[b] * ((OmegaRearSigned - rS) / OmegaT)
+				+ Y2[s] * ((DeltDotRR[b] / OmegaT) + (pS / OmegaT * cos(PsiRR_blades[b] + DeltRR[b]) - qS / OmegaT * sin(PsiRR_blades[b] + DeltRR[b])) * SinBetaRR[b] + CosBetaRR[b] * ((OmegaRearSigned - rS) / OmegaT));
+			if (UTRR[b][s] == 0.0) { UTRR[b][s] = 0.00001; }
+
+			URRR[b][s] = LambdaRR * SinBetaRR[b] + MuXS * CosBetaRR[b] * cos(PsiRR_blades[b] + DeltRR[b]) - MuYS * CosBetaRR[b] * sin(PsiRR_blades[b] + DeltRR[b])
+				+ XI * SinBetaRR[b] * ((qS / OmegaT - K1X * DWRR) * CosPsiRR[b] + (pS / OmegaT + K1Y * DWRR) * SinPsiRR[b])
+				- XI * CosBetaRR[b] * SinDeltRR[b] * ((OmegaRearSigned - rS) / OmegaT)
+				+ Y2[s] * SinBetaRR[b] * (-K1X * DWRR * cos(PsiRR_blades[b] + DeltRR[b]) + K1Y * DWRR * sin(PsiRR_blades[b] + DeltRR[b]));
+
+			double UYAW = sqrt(pow(UTRR[b][s], 2) + pow(UPRR[b][s], 2) + pow(URRR[b][s], 2));
+			double cosGamma = abs(UTRR[b][s]) / sqrt(pow(UTRR[b][s], 2) + pow(URRR[b][s], 2));
+			if (cosGamma == 0.0) { cosGamma = 0.00001; }
+
+			ThetaRR[b][s] = (ThetaRear - A1Rear * cos(PsiRR_blades[b] + DeltaSP) - B1Rear * sin(PsiRR_blades[b] + DeltaSP) + Theta1 * (Y2[s] - XIPrime) - 57.3 * BetaRR[b] * tan(delt3)) * Convert::degToRad;
+			double alphaY = atan2((UTRR[b][s] * tan(ThetaRR[b][s]) + UPRR[b][s]) * cosGamma, UTRR[b][s] - UPRR[b][s] * tan(ThetaRR[b][s]) * pow(cosGamma, 2)) * Convert::radToDeg;
+			alphaY = limit(alphaY, -180.0, 180.0);
+
+			if (abs(alphaY) >= 0 && abs(alphaY) <= 13.5 / cosGamma)
+			{
+				if (abs(alphaY) > 90.0)
+				{
+					alphaTransRR[b][s] = abs(alphaY * cosGamma + alphaY / abs(alphaY) * 180.0 * (1.0 - cosGamma));
+				}
+				else
+				{
+					alphaTransRR[b][s] = abs(alphaY * cosGamma);
+				}
+			}
+			else if (abs(alphaY) >= (180.0 - 8.0 / cosGamma) && abs(alphaY) <= 180.0)
+			{
+				if (abs(alphaY) > 90.0)
+				{
+					alphaTransRR[b][s] = abs(alphaY * cosGamma + alphaY / abs(alphaY) * 180.0 * (1.0 - cosGamma));
+				}
+				else
+				{
+					alphaTransRR[b][s] = abs(alphaY * cosGamma);
+				}
+			}
+			else if (abs(alphaY) >= 13.5 / cosGamma && abs(alphaY) <= (180.0 - 8.0 / cosGamma))
+			{
+				alphaTransRR[b][s] = abs(alphaY);
+			}
+			alphaTransRR[b][s] = limit(alphaTransRR[b][s], 0.0, 180.0);
+
+			double CLfinal = fn_CL_NACA0015.interpnf1(alphaTransRR[b][s]);
+			double CDfinal = fn_CD_NACA0015.interpnf1(abs(alphaY));
+			if (s < NUM_BLADE_SEGMENTS - 1)
+			{
+				CLYRR[b][s] = CLfinal;
+			}
+			if (s == NUM_BLADE_SEGMENTS - 1)
+			{
+				CLYRR[b][s] = (1.0 - ((1.0 - BMR) / DeltaY[NUM_BLADE_SEGMENTS - 1])) * CLfinal;
+			}
+			if (alphaY < 0.0)
+			{
+				CLYRR[b][s] = -CLYRR[b][s];
+			}
+			CDYRR[b][s] = CDfinal;
+
+			FPRR[b][s] = 0.5 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 3) * (CR * DeltaY[s]) * UYAW * (CLYRR[b][s] * (UTRR[b][s] / cosGamma) + CDYRR[b][s] * UPRR[b][s]);
+			FTRR[b][s] = 0.5 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 3) * (CR * DeltaY[s]) * UYAW * (CDYRR[b][s] * UTRR[b][s] - CLYRR[b][s] * UPRR[b][s] * cosGamma);
+			FRRR[b][s] = 0.5 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 3) * (CR * DeltaY[s]) * UYAW * (CDYRR[b][s] - CLYRR[b][s] * (UPRR[b][s] / UTRR[b][s]) * cosGamma) * URRR[b][s];
+		}
+
+		double FPB = 0.0;
+		double FTB = 0.0;
+		double FRB = 0.0;
+		for (int s = 0; s < NUM_BLADE_SEGMENTS; s++)
+		{
+			FPB += FPRR[b][s];
+			FTB += FTRR[b][s];
+			FRB += FRRR[b][s];
+		}
+
+		FXARR[b] = FRB * CosBetaRR[b] * SinDeltRR[b] - FTB * CosDeltRR[b] - FPB * SinBetaRR[b] * SinDeltRR[b];
+		FYARR[b] = FRB * CosBetaRR[b] * CosDeltRR[b] + FTB * SinDeltRR[b] - FPB * SinBetaRR[b] * CosDeltRR[b];
+		FZARR[b] = -(FRB * SinBetaRR[b] + FPB * CosBetaRR[b]);
+
+		MFARR[b] = 0.0;
+		for (int s = 0; s < NUM_BLADE_SEGMENTS; s++)
+		{
+			MFARR[b] += Y2[s] * FPRR[b][s];
+		}
+		MFARR[b] *= RMR;
+
+		MLARR[b] = 0.0;
+		for (int s = 0; s < NUM_BLADE_SEGMENTS; s++)
+		{
+			MLARR[b] += Y2[s] * FTRR[b][s];
+		}
+		MLARR[b] *= RMR;
+		MFDRR[b] = -(Kbeta * BetaRR[b] + KbetaDot * BetaDotRR[b]);
+
+		double FXI = Mb * (CosBetaRR[b] * CosDeltRR[b] * (rDotS - OmegaDot - DeltDotDotRR[b])
+			+ 2.0 * SinBetaRR[b] * CosDeltRR[b] * (DeltDotRR[b] * BetaDotRR[b] + (OmegaRearSigned - rS) * BetaDotRR[b])
+			+ CosBetaRR[b] * SinDeltRR[b] * (pow(DeltDotRR[b], 2) + pow(BetaDotRR[b], 2) + 2.0 * (OmegaRearSigned - rS) * DeltDotRR[b] + pow(OmegaRearSigned - rS, 2))
+			+ 2.0 * BetaDotRR[b] * CosBetaRR[b] * (pS * CosPsiRR[b] - qS * SinPsiRR[b])
+			+ BetaDotDotRR[b] * SinBetaRR[b] * SinDeltRR[b])
+			- (Wb / Convert::gravity_fts2) * (VXSDot * SinPsiRR[b] + VYSDot * CosPsiRR[b]);
+		double FYI = Mb * (CosBetaRR[b] * CosDeltRR[b] * (pow(DeltDotRR[b], 2) + pow(BetaDotRR[b], 2) + 2.0 * (OmegaRearSigned - rS) * DeltDotRR[b] + pow(OmegaRearSigned - rS, 2))
+			+ BetaDotDotRR[b] * SinBetaRR[b] * CosDeltRR[b] + DeltDotDotRR[b] * CosBetaRR[b] * SinDeltRR[b] - 2.0 * BetaDotRR[b] * CosBetaRR[b] * (pS * SinPsiRR[b] + qS * CosPsiRR[b])
+			+ (Wb * e / (Convert::gravity_fts2 * Mb)) * pow(OmegaRearSigned - rS, 2))
+			+ (Wb / Convert::gravity_fts2) * (VXSDot * CosPsiRR[b] - VYSDot * SinPsiRR[b]);
+		double FZI = Mb * (BetaDotDotRR[b] * CosBetaRR[b] - pow(BetaDotRR[b], 2) * SinBetaRR[b] + 2.0 * BetaDotRR[b] * SinBetaRR[b] * CosDeltRR[b] * (pS * SinPsiRR[b] + qS * CosPsiRR[b])
+			+ CosBetaRR[b] * SinDeltRR[b] * (2.0 * (OmegaRearSigned + DeltDotRR[b]) * (pS * SinPsiRR[b] + qS * CosPsiRR[b]) + qDotS * SinPsiRR[b] - pDotS * CosPsiRR[b])
+			- CosBetaRR[b] * CosDeltRR[b] * (2.0 * (OmegaRearSigned + DeltDotRR[b]) * (pS * CosPsiRR[b] - qS * SinPsiRR[b]) + pDotS * SinPsiRR[b] + qDotS * CosPsiRR[b])
+			- (Wb * e / (Convert::gravity_fts2 * Mb)) * (2.0 * OmegaRearSigned * (pS * CosPsiRR[b] - qS * SinPsiRR[b]) + pDotS * SinPsiRR[b] + qDotS * CosPsiRR[b]))
+			- (Wb / Convert::gravity_fts2) * VZSDot;
+
+		FXTRR[b] = FXARR[b] + FXI;
+		FYTRR[b] = FYARR[b] + FYI;
+		FZTRR[b] = (FZARR[b] + FZI) * Kge;
+
+		double bladeHealth = p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
+		FXTRR[b] *= bladeHealth;
+		FYTRR[b] *= bladeHealth;
+		FZTRR[b] *= bladeHealth;
+
+		double XB = -(FYTRR[b] * CosPsiRR[b] - FXTRR[b] * SinPsiRR[b]);
+		double YB = (FXTRR[b] * CosPsiRR[b] + FYTRR[b] * SinPsiRR[b]);
+		double ZB = FZTRR[b];
+
+		ForceComponent bladeForce;
+		bladeForce.dir.x = limit(XB * cos(iSRR) + ZB * sin(iSRR), -10000.0, 10000.0) * Convert::lbf_to_N;
+		bladeForce.dir.y = limit(-(-XB * sin(iSRR) + ZB * cos(iSRR)), -10000.0, 10000.0) * Convert::lbf_to_N;
+		bladeForce.dir.z = limit(YB, -10000.0, 10000.0) * Convert::lbf_to_N;
+		bladeForce.pos.x = (lRR - e * CosPsiRR[b]) * Convert::feetToMeter;
+		bladeForce.pos.y = -hRR * Convert::feetToMeter;
+		bladeForce.pos.z = (bRR + e * SinPsiRR[b]) * Convert::feetToMeter;
+		aeroForces.push_back(bladeForce);
+	}
+
+	double TA = 0.0;
+	for (int b = 0; b < NUM_BLADES; b++)
+	{
+		TA += FZARR[b] * p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
+	}
+	TA = -TA;
+	CTARR = TA / (2.0 * p_EFMdata.rho_SlgFt3 * pow(OmegaT, 2) * pow(RMR, 4) * M_PI);
+
+	double Q = 0.0;
+	for (int b = 0; b < NUM_BLADES; b++)
+	{
+		Q += (e * FXTRR[b] - MLARR[b] * CosBetaRR[b]) * p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
+	}
+	Q = -Q;
+	QMRRear = Q;
+
+	double Q2 = 0.0;
+	for (int b = 0; b < NUM_BLADES; b++)
+	{
+		Q2 += (-MLARR[b] * CosBetaRR[b]) * p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
+	}
+	Q2 = -Q2 * 0.5;
+
+	if (p_EFMdata.time > p_EFMdata.deltaTime * 2)
+	{
+		Vec3 rrMoment;
+		rrMoment.x = limit(Q2 * sin(iSRR), -5000.0, 5000.0) * Convert::lbft_to_Nm;
+		rrMoment.y = limit(-Q2 * cos(iSRR), -5000.0, 5000.0) * Convert::lbft_to_Nm;
+		rrMoment.z = 0.0;
+		aeroMoments.push_back(rrMoment);
+	}
+
+	double a1SFR = 0.0;
+	for (int b = 0; b < NUM_BLADES; b++)
+	{
+		a1SFR += BetaRR[b] * CosPsiRR[b] * p_Damage.elementIntegrity[BLADE_1_CENTER + b * 3];
+	}
+	a1SFR *= -2.0 / NUM_BLADES * Convert::radToDeg;
+	skewAngleRR = atan2(MuXS, abs(LambdaRR)) * Convert::radToDeg + a1SFR;
+	skewAngleMR = 0.5 * (skewAngleMR + skewAngleRR);
+
 	double animPos = PsiRR / (2.0 * M_PI);
 	if (animPos < 0.0)
 	{
