@@ -9,7 +9,7 @@ TARGET := $(OUT_DIR)/CH46D.dll
 
 SOURCES := \
 	dllmain.cpp \
-	AH6.cpp \
+	CH46D.cpp \
 	FlightModel/Aero.cpp \
 	stdafx.cpp
 
