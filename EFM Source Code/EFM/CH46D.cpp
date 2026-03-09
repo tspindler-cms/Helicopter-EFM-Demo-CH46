@@ -300,8 +300,10 @@ void ed_fm_set_command(int command, float value)
 	float device_id = 0; // See Cockpit\Scripts\devices.lua
 	if (value > 1.0) // if the command comes from clickabledata.lua it adds the device id to the value and changes the value
 	{
-		float normalized = modf(value, &device_id);
-		value = normalized * 8.f - 2.f;
+		double wholePart = 0.0;
+		double normalized = std::modf(static_cast<double>(value), &wholePart);
+		device_id = static_cast<float>(wholePart);
+		value = static_cast<float>(normalized * 8.0 - 2.0);
 	}
 
 	switch ((int)device_id) // sort inputs by device
