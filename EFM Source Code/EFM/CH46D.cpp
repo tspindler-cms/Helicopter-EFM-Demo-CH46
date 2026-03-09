@@ -17,7 +17,7 @@
 // they are probably using the second set of directions.  Which means you always need to switch
 // the Y and the Z and reverse the Y prior to output to DCS World
 //---------------------------------------------------------------------------
-#include "AH6.h"
+#include "CH46D.h"
 
 
 
