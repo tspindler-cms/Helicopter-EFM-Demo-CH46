@@ -1,1 +1,1 @@
-return _('CH-46D Flyable')
+return _('[VWV] CH-46D Sea Knight (Flyable)')

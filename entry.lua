@@ -31,14 +31,14 @@ LogBook =
 {
 	{
 		name	= _("CH-46D Flyable"),
-		type	= "CH-46D Flyable",
+		type	= "vwv_ch46d_flyable",
 	},
 },
 InputProfiles =
 {
+	[self_ID] = current_mod_path .. '/Input',
 	["vwv_ch46d_flyable"] = current_mod_path .. '/Input',
 	["vwv_ch46d_late_flyable"] = current_mod_path .. '/Input',
-	["CH-46D Flyable"] = current_mod_path .. '/Input',
 },
 Options =
 {
