@@ -69,7 +69,7 @@ join(res.axisCommands,{
 {combos = defaultDeviceAssignmentFor("roll")	, action = iCommandPlaneRoll,			name = _('Roll Cyclic')},
 {combos = defaultDeviceAssignmentFor("pitch")	, action = iCommandPlanePitch,			name = _('Pitch Cyclic')},
 {combos = defaultDeviceAssignmentFor("rudder")	, action = iCommandPlaneRudder, 		name = _('Pedals')},
-{combos = defaultDeviceAssignmentFor("thrust")	, action = iCommandPlaneThrustCommon,	name = _('Collective')},
+{combos = defaultDeviceAssignmentFor("thrust")	, action = EFM_commands.collectiveAxis,	name = _('Collective')},
 {action = EFM_commands.throttleAxis,	name = _('Throttle')},
 
 })

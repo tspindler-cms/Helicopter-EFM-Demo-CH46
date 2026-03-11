@@ -120,6 +120,7 @@ EFM_commands = 	-- commands for use in EFM (make sure to copy to GlobalData.h)
 	KeyCyclicBack		= 3028,
 	KeyCyclicLeft		= 3029,
 	KeyCyclicRight		= 3030,
+	collectiveAxis		= 3031,  -- dedicated collective axis (iCommandPlaneThrustCommon may not reach EFM)
 }
 
 
