@@ -38,6 +38,7 @@ InputProfiles =
 {
 	["vwv_ch46d_flyable"] = current_mod_path .. '/Input',
 	["vwv_ch46d_late_flyable"] = current_mod_path .. '/Input',
+	["CH-46D Flyable"] = current_mod_path .. '/Input',
 },
 Options =
 {
@@ -67,6 +68,7 @@ add_aircraft(dofile(current_mod_path..'/Database/vwv_ch46d_late.lua'))
 -- dofile(current_mod_path..'/UnitPayloads/AH-6.lua')
 dofile(current_mod_path.."/Views.lua")
 make_view_settings('vwv_ch46d_flyable', ViewSettings, SnapViews)
+make_view_settings('vwv_ch46d_late_flyable', ViewSettings, SnapViews)
 
 local cfg_path = current_mod_path.."/FM_Config.lua"
 dofile(cfg_path)
@@ -75,5 +77,6 @@ EFM[2] 				= 'CH46D'
 EFM.config_path 	= cfg_path
 
 make_flyable('vwv_ch46d_flyable', current_mod_path..'/Cockpit/Scripts/', EFM, current_mod_path..'/comm.lua')
+make_flyable('vwv_ch46d_late_flyable', current_mod_path..'/Cockpit/Scripts/', EFM, current_mod_path..'/comm.lua')
 
 plugin_done()
