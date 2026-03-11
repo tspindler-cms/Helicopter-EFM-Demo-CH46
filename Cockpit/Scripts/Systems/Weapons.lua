@@ -56,33 +56,37 @@ local salvoLeft = true
 function updateGuns()
 	if isArmed and AMS_hasPower and triggerOn then
 		if LeftGunPower and LeftGunArmed then
-				local gunInfo = dev:get_station_info(L_OB_Station)
-				if gunInfo.weapon.level2 == wsType_Shell then -- prevent shooting rockets if those are mounted
-					dev:launch_station(L_OB_Station)
-				end
-				dev:launch_station(L_IB_Station)
+			local gunInfo = dev:get_station_info(L_OB_Station)
+			if gunInfo and gunInfo.weapon and gunInfo.weapon.level2 == wsType_Shell then
+				dev:launch_station(L_OB_Station)
 			end
+			dev:launch_station(L_IB_Station)
+		end
 		if RightGunPower and RightGunArmed then
 			local gunInfo = dev:get_station_info(R_OB_Station)
-			if gunInfo.weapon.level2 == wsType_Shell then -- prevent shooting rockets if those are mounted
+			if gunInfo and gunInfo.weapon and gunInfo.weapon.level2 == wsType_Shell then
 				dev:launch_station(R_OB_Station)
 			end
 			dev:launch_station(R_IB_Station)
 		end
 	end
 	
-	-- animation controls
-	local gun0Info = dev:get_station_info(L_OB_Station).weapon.level2
-	local gun1Info = dev:get_station_info(L_IB_Station).weapon.level2
-	if gun1Info== wsType_Shell or gun0Info== wsType_Shell then
+	-- animation controls (nil-safe: CH-46D may have empty/different stations)
+	local st0 = dev:get_station_info(L_OB_Station)
+	local st1 = dev:get_station_info(L_IB_Station)
+	local gun0Info = (st0 and st0.weapon) and st0.weapon.level2 or nil
+	local gun1Info = (st1 and st1.weapon) and st1.weapon.level2 or nil
+	if gun1Info == wsType_Shell or gun0Info == wsType_Shell then
 		set_aircraft_draw_argument_value(1001,1)	-- draws the left ammo box if the gun is mounted
 	else 
 		set_aircraft_draw_argument_value(1001,0)
 	end
 	
-	local gun3Info = dev:get_station_info(R_IB_Station).weapon.level2
-	local gun4Info = dev:get_station_info(R_OB_Station).weapon.level2
-	if gun3Info== wsType_Shell or gun4Info== wsType_Shell then
+	local st3 = dev:get_station_info(R_IB_Station)
+	local st4 = dev:get_station_info(R_OB_Station)
+	local gun3Info = (st3 and st3.weapon) and st3.weapon.level2 or nil
+	local gun4Info = (st4 and st4.weapon) and st4.weapon.level2 or nil
+	if gun3Info == wsType_Shell or gun4Info == wsType_Shell then
 		set_aircraft_draw_argument_value(1002,1)	-- draws the right ammo box if the gun is mounted
 	else 		
 		set_aircraft_draw_argument_value(1002,0)	
@@ -90,8 +94,10 @@ function updateGuns()
 end
 
 function updateRockets()
-	local L_isRkt = dev:get_station_info(L_OB_Station).weapon.level2==wsType_NURS
-	local R_isRkt = dev:get_station_info(R_OB_Station).weapon.level2==wsType_NURS
+	local stL = dev:get_station_info(L_OB_Station)
+	local stR = dev:get_station_info(R_OB_Station)
+	local L_isRkt = (stL and stL.weapon) and stL.weapon.level2 == wsType_NURS
+	local R_isRkt = (stR and stR.weapon) and stR.weapon.level2 == wsType_NURS
 
 	if isArmed and AMS_hasPower and FireRocket then
 		if PairOn then
