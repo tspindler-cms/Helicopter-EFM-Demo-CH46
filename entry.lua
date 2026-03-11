@@ -36,9 +36,12 @@ LogBook =
 },
 InputProfiles =
 {
-	[self_ID] = current_mod_path .. '/Input',
+	-- Aircraft Name (from database) - primary lookup keys
 	["vwv_ch46d_flyable"] = current_mod_path .. '/Input',
 	["vwv_ch46d_late_flyable"] = current_mod_path .. '/Input',
+	-- Display names in case DCS uses them for controls dropdown
+	["[VWV] CH-46D Sea Knight (Flyable)"] = current_mod_path .. '/Input',
+	["[VWV] CH-46D Sea Knight (late) (Flyable)"] = current_mod_path .. '/Input',
 },
 Options =
 {
