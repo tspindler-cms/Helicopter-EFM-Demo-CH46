@@ -1,1 +1,1 @@
-return _('AH-6J')
+return _('CH-46D Flyable')

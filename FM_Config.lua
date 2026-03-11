@@ -6,7 +6,7 @@ function skidSuspension(collisionLine, arg)
 			amortizer_min_length					= 0.0,
 			amortizer_max_length					= 0.115,
 			amortizer_basic_length					= 0.115,
-			amortizer_spring_force_factor			= 80000.0, 
+			amortizer_spring_force_factor			= 80000.0,
 			amortizer_spring_force_factor_rate		= 1,
 			amortizer_static_force					= 7500.0,
 			amortizer_reduce_length					= 0.115,
@@ -32,15 +32,15 @@ function skidSuspension(collisionLine, arg)
 end
 
 
-EFM = {   
+EFM = {
 	center_of_mass    = {0,0,0},--{-0.125, 0.15, 0.0}, -- center of mass position relative to object 3d model center for empty aircraft (m)     -- {forward/back,up/down,left/right}	
-    moment_of_inertia = {24500, 172000, 185000, -2500}, -- CH-46D reference MOI [kg*m^2]
-	
+    moment_of_inertia = {458, 1008, 1242, 129},--{446, 979, 1219, 128},  -- moment of inertia of empty aircraft (Ixx,Iyy,Izz,Ixz DCS axis)/(Ix,Iz,Iy,Ixy normal axis) [kg*m^2]  
+
 	suspension = { 
 		skidSuspension("ELEVATOR_L_OUT", 1),
 		skidSuspension("ELEVATOR_R_OUT", 343),
 		skidSuspension("Line_STABIL_L", 6),
-		skidSuspension("Line_STABIL_R", 4),		
-	}, 
+		skidSuspension("Line_STABIL_R", 4),
+	},
     disable_built_in_oxygen_system  = false, -- set this to false to enable hypoxia effects, etc
 }
