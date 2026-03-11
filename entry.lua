@@ -37,6 +37,7 @@ LogBook =
 InputProfiles =
 {
 	["vwv_ch46d_flyable"] = current_mod_path .. '/Input',
+	["vwv_ch46d_late_flyable"] = current_mod_path .. '/Input',
 },
 Options =
 {
