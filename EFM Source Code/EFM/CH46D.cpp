@@ -533,6 +533,32 @@ double ed_fm_get_param(unsigned param_enum)
 	case ED_FM_ENGINE_1_CORE_RELATED_THRUST:
 		return 0;
 
+	// Engine 2 (right) - CH-46D has two T58 engines; both share combining transmission, report same values
+	case ED_FM_ENGINE_2_RPM:
+		return Aero.getN2omega() * 6016.0;
+	case ED_FM_ENGINE_2_RELATED_RPM:
+		return Aero.getN2omega();
+	case ED_FM_ENGINE_2_CORE_RPM:
+		return Engine.getN1RPM() * 6016.0;
+	case ED_FM_ENGINE_2_CORE_RELATED_RPM:
+		return Engine.getN1RPM();
+	case ED_FM_ENGINE_2_TEMPERATURE:
+		return Engine.getTOT();
+	case ED_FM_ENGINE_2_OIL_PRESSURE:
+		return Engine.getOilPress_Pa();
+	case ED_FM_ENGINE_2_FUEL_FLOW:
+		return 0;
+	case ED_FM_ENGINE_2_TORQUE:
+		return Engine.getTorque_Nm();
+	case ED_FM_ENGINE_2_STARTER_RELATED_TORQUE:
+	case ED_FM_ENGINE_2_RELATIVE_TORQUE:
+		return Engine.getTorqueRelative();
+	case ED_FM_ENGINE_2_THRUST:
+	case ED_FM_ENGINE_2_RELATED_THRUST:
+	case ED_FM_ENGINE_2_CORE_THRUST:
+	case ED_FM_ENGINE_2_CORE_RELATED_THRUST:
+		return 0;
+
 	case ED_FM_SUSPENSION_0_GEAR_POST_STATE: // from 0 to 1 : from fully retracted to full released
 	case ED_FM_SUSPENSION_1_GEAR_POST_STATE: 
 	case ED_FM_SUSPENSION_2_GEAR_POST_STATE: 
