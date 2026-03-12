@@ -333,7 +333,6 @@ void ed_fm_set_command(int command, float value)
 		break;
 
 	case JoystickThrottle:
-	case collectiveAxis:
 		flightControls.CollectiveInput = limit(((-value + 1.0) / 2.0) , 0.0, 1.0);
 		break;
 
