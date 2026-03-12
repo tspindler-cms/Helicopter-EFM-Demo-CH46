@@ -1016,9 +1016,9 @@ void CH46DAero::RearRotorModule()
 		FYTRR[b] *= bladeHealth;
 		FZTRR[b] *= bladeHealth;
 
-		double XB = -(FYTRR[b] * CosPsiRR[b] - FXTRR[b] * SinPsiRR[b]);
-		double YB = (FXTRR[b] * CosPsiRR[b] + FYTRR[b] * SinPsiRR[b]);
-		double ZB = FZTRR[b];
+		double XB = -(FYTRR[b] * CosPsiRR[b] - FXTRR[b] * SinPsiRR[b]) * rearRotorThrustFactor;
+		double YB = (FXTRR[b] * CosPsiRR[b] + FYTRR[b] * SinPsiRR[b]) * rearRotorThrustFactor;
+		double ZB = FZTRR[b] * rearRotorThrustFactor;
 
 		ForceComponent bladeForce;
 		bladeForce.dir.x = limit(XB * cos(iSRR) + ZB * sin(iSRR), -10000.0, 10000.0) * Convert::lbf_to_N;
