@@ -36,6 +36,7 @@ LogBook =
 },
 InputProfiles =
 {
+	["ch46d"] = current_mod_path .. '/Input', -- some DCS builds resolve controls by shape_table_data.username
 	[self_ID] = current_mod_path .. '/Input',
 },
 Options =
