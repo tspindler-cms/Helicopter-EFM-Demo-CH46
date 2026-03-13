@@ -21,7 +21,7 @@ Blade span axis is the local axis to each blade and
 includes tangential, radial, and perpendicular components.
 */
 
-AH6Aero::AH6Aero(EFMData& ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl)
+CH46DAero::CH46DAero(EFMData& ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl)
 	: p_EFMdata(ptr_EFMdata)
 	, p_Damage(ptr_Damage)
 	, p_flightControl(ptr_fltCntrl)
@@ -30,7 +30,7 @@ AH6Aero::AH6Aero(EFMData& ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& p
 }
 
 
-void AH6Aero::Initialize()
+void CH46DAero::Initialize()
 {
 	//blade segment measurements
 	XI = e / RMR;//hinge offset normalized to unit radius
@@ -57,7 +57,7 @@ void AH6Aero::Initialize()
 	QMRRear = 0.0;
 }
 	
-void AH6Aero::InitializeOff()
+void CH46DAero::InitializeOff()
 {
 	Omega = 0.0;
 	OmegaRR = 0.0;
@@ -98,7 +98,7 @@ void AH6Aero::InitializeOff()
 	}
 }
 
-void AH6Aero::InitializeOn()
+void CH46DAero::InitializeOn()
 {
 	InitializeOff();
 	Omega = OmegaT;
@@ -112,7 +112,7 @@ void AH6Aero::InitializeOn()
 	DWRR = 0.022;
 }
 
-void AH6Aero::update(double engtorque)
+void CH46DAero::update(double engtorque)
 {
 	MainRotorModule();
 	RearRotorModule();
@@ -122,7 +122,7 @@ void AH6Aero::update(double engtorque)
 	RotorDegreeOfFreedom(engtorque);
 }
 
-void AH6Aero::TandemRotorControlMix(double& thetaFront, double& thetaRear,
+void CH46DAero::TandemRotorControlMix(double& thetaFront, double& thetaRear,
 	double& a1Front, double& a1Rear,
 	double& b1Front, double& b1Rear) const
 {
@@ -148,7 +148,7 @@ void AH6Aero::TandemRotorControlMix(double& thetaFront, double& thetaRear,
 
 // TODO:  
 // check control input pitch amounts
-void AH6Aero::MainRotorModule()
+void CH46DAero::MainRotorModule()
 {
 	double ThetaCUFF = 0.0;
 	double ThetaRear = 0.0;
@@ -463,7 +463,7 @@ void AH6Aero::MainRotorModule()
 		bladeForce.dir.x = limit(XB * cos(iS) + ZB * sin(iS), -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.dir.y = limit(-(-XB * sin(iS) + ZB * cos(iS)), -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.dir.z = limit(YB, -10000.0, 10000.0) * Convert::lbf_to_N;
-		bladeForce.pos.x = (lMR - e * CosPsi[b] )* Convert::feetToMeter;
+		bladeForce.pos.x = (-lMR - e * CosPsi[b] )* Convert::feetToMeter;
 		bladeForce.pos.y = -hMR * Convert::feetToMeter;
 		bladeForce.pos.z = (bMR + e * SinPsi[b]) * Convert::feetToMeter;
 		aeroForces.push_back(bladeForce);
@@ -583,7 +583,7 @@ void AH6Aero::MainRotorModule()
 
 //todo add rearward n coef table
 //todo validate wash factor tables
-void AH6Aero::FuselageModule()
+void CH46DAero::FuselageModule()
 {
 	double EKFX = fn_EKFX.interpnf1(limit(skewAngleMR, -20.0, 90.0));//rotor wash factor on fuselage
 	double EKFZ = fn_EKFZ.interpnf1(limit(skewAngleMR, -20.0, 90.0));//rotor wash factor on fuselage
@@ -624,7 +624,7 @@ void AH6Aero::FuselageModule()
 
 }//end fuselage module
 
-void AH6Aero::EmpennageModule()
+void CH46DAero::EmpennageModule()
 {
 	/*
 	todo: need to change wash factor to just be effective at high wake angles
@@ -768,7 +768,7 @@ void AH6Aero::EmpennageModule()
 	aeroForces.push_back(VTForce);
 }
 
-void AH6Aero::RearRotorModule()
+void CH46DAero::RearRotorModule()
 {
 	double ThetaFront = 0.0;
 	double ThetaRear = 0.0;
@@ -1080,7 +1080,7 @@ void AH6Aero::RearRotorModule()
 }
 
 // todo: add TR torque?, tune inertias/ratios
-void AH6Aero::RotorDegreeOfFreedom(double engtorque)
+void CH46DAero::RotorDegreeOfFreedom(double engtorque)
 {
 	/* Summary of operation
 	* Change in collective causes change in MR torque which changes the speed of the rotor, if engine torque is constant.

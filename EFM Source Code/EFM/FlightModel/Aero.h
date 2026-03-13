@@ -22,11 +22,11 @@
 //#define USE_LAG_DOF
 static const double OmegaT = 27.6460; // nominal rotor rotational velocity, [rad/sec] (264 RPM)
 
-class AH6Aero
+class CH46DAero
 {
 public:
-	AH6Aero(EFMData &ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl);
-	~AH6Aero() {}
+	CH46DAero(EFMData &ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl);
+	~CH46DAero() {}
 
     EFMData& p_EFMdata;
     AH6JDamage& p_Damage;
