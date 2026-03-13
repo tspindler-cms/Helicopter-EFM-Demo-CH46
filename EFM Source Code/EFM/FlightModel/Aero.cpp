@@ -463,7 +463,7 @@ void CH46DAero::MainRotorModule()
 		bladeForce.dir.x = limit(XB * cos(iS) + ZB * sin(iS), -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.dir.y = limit(-(-XB * sin(iS) + ZB * cos(iS)), -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.dir.z = limit(YB, -10000.0, 10000.0) * Convert::lbf_to_N;
-		bladeForce.pos.x = (-lMR - e * CosPsi[b] )* Convert::feetToMeter;
+		bladeForce.pos.x = (lMR - e * CosPsi[b] )* Convert::feetToMeter;
 		bladeForce.pos.y = -hMR * Convert::feetToMeter;
 		bladeForce.pos.z = (bMR + e * SinPsi[b]) * Convert::feetToMeter;
 		aeroForces.push_back(bladeForce);
@@ -1022,7 +1022,8 @@ void CH46DAero::RearRotorModule()
 
 		ForceComponent bladeForce;
 		bladeForce.dir.x = limit(XB * cos(iSRR) + ZB * sin(iSRR), -10000.0, 10000.0) * Convert::lbf_to_N;
-		bladeForce.dir.y = limit(-(-XB * sin(iSRR) + ZB * cos(iSRR)), -10000.0, 10000.0) * Convert::lbf_to_N;
+		const double rearBladeForceYScale = 0.005; // scale down y (reduce blade angle), 1.0 = full blade angle
+		bladeForce.dir.y = rearBladeForceYScale * fabs(limit(-(-XB * sin(iSRR) + ZB * cos(iSRR)), -10000.0, 10000.0) * Convert::lbf_to_N);  // always upward (DCS y = up) to prevent oscillation
 		bladeForce.dir.z = limit(YB, -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.pos.x = (lRR - e * CosPsiRR[b]) * Convert::feetToMeter;
 		bladeForce.pos.y = -hRR * Convert::feetToMeter;
