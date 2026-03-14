@@ -188,7 +188,9 @@ private:
     const double rearRotationSign{ -1.0 }; // rear rotor counter-rotation sign
     const double tandemInducedPowerFactor{ 1.18 };  // CH-46: ~18% more induced power due to wake interference (thrust_correction 0.85)
     const double rearRotorWakeFraction{ 0.35 };     // CH-46: ~34% overlap, fraction of front wake reaching rear disk
-    const double rearRotorThrustFactor{ 0.82 };     // CH-46: scale rear lift to match front (thrust_correction; rear in wake produces less thrust)
+    const double rearRotorThrustFactor{ 0.545 };     // CH-46: scale rear lift to match front (thrust_correction; rear in wake produces less thrust)
+    const double rearRotorXBYScale{ 0.0 };          // scale XB contribution to blade force y (0=no oscillation from in-plane force, 1=full)
+    const double rearRotorYFilterTc{ 0.25 };        // time constant [s] for smoothing rear blade force y (reduces frame-to-frame oscillation)
 
     //============== Gearbox Constants (CH-46D: rotor_MOI 4442 kg*m^2 = 3276 slug*ft^2) ==================
     const double JMR = 3276.0;// combined tandem rotor inertia, [slug-ft2]
@@ -280,6 +282,7 @@ private:
     double CosBetaRR[NUM_BLADES] = { 0.0 };
     double SinDeltRR[NUM_BLADES] = { 0.0 };
     double CosDeltRR[NUM_BLADES] = { 0.0 };
+    double rearRotorAvgZBSmoothed = 0.0;  // time-filtered avg ZB [lbf] for rear blade force y (reduces oscillation)
     double BetaDotDotRR[NUM_BLADES] = { 0.0 };
     double BetaDotRR[NUM_BLADES] = { 0.0 };
     double BetaRR[NUM_BLADES] = { 0.0 };

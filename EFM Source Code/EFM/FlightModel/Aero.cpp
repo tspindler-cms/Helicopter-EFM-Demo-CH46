@@ -1,4 +1,5 @@
 #include "Aero.h"
+#include <cmath>
 
 //!!!!!!!!!!! TODO bugs/missing stuff: !!!!!!!!!!!!
 //rotor wash factors
@@ -83,6 +84,7 @@ void CH46DAero::InitializeOff()
 		BetaRR[b] = 0.0;
 		BetaDotRR[b] = 0.0;
 		BetaDotDotRR[b] = 0.0;
+		rearRotorAvgZBSmoothed = 0.0;
 		DeltRR[b] = 0.0;
 		DeltDotRR[b] = 0.0;
 		DeltDotDotRR[b] = 0.0;
@@ -1022,13 +1024,30 @@ void CH46DAero::RearRotorModule()
 
 		ForceComponent bladeForce;
 		bladeForce.dir.x = limit(XB * cos(iSRR) + ZB * sin(iSRR), -10000.0, 10000.0) * Convert::lbf_to_N;
-		const double rearBladeForceYScale = 0.005; // scale down y (reduce blade angle), 1.0 = full blade angle
-		bladeForce.dir.y = rearBladeForceYScale * fabs(limit(-(-XB * sin(iSRR) + ZB * cos(iSRR)), -10000.0, 10000.0) * Convert::lbf_to_N);  // always upward (DCS y = up) to prevent oscillation
 		bladeForce.dir.z = limit(YB, -10000.0, 10000.0) * Convert::lbf_to_N;
 		bladeForce.pos.x = (lRR - e * CosPsiRR[b]) * Convert::feetToMeter;
 		bladeForce.pos.y = -hRR * Convert::feetToMeter;
 		bladeForce.pos.z = (bRR + e * SinPsiRR[b]) * Convert::feetToMeter;
+		// this is the main rotor y calculation, not sure why it's not the same as the rear rotor:
+		// bladeForce.dir.y = limit(-(-XB * sin(iS) + ZB * cos(iS)), -10000.0, 10000.0) * Convert::lbf_to_N;
+		bladeForce.dir.y = 0.0;  // filled below after rotor avg
 		aeroForces.push_back(bladeForce);
+	}
+	// use time-filtered rotor-averaged ZB for y to remove frame-to-frame oscillation
+	{
+		double avgZB = 0.0;
+		for (int b = 0; b < NUM_BLADES; b++)
+			avgZB += FZTRR[b] * rearRotorThrustFactor;
+		avgZB /= NUM_BLADES;
+		// 1st-order low-pass filter: reduces oscillation from azimuth-dependent FZTRR
+		const double dt = p_EFMdata.deltaTime;
+		const double alpha = (dt > 0.0 && rearRotorYFilterTc > 0.0) ? dt / (rearRotorYFilterTc + dt) : 1.0;
+		rearRotorAvgZBSmoothed = rearRotorAvgZBSmoothed * (1.0 - alpha) + avgZB * alpha;
+		double rawY = -rearRotorAvgZBSmoothed * cos(iSRR);
+		rawY = fabs(limit(rawY, -10000.0, 10000.0)) * Convert::lbf_to_N;
+		size_t base = aeroForces.size() - NUM_BLADES;
+		for (size_t i = 0; i < (size_t)NUM_BLADES; i++)
+			aeroForces[base + i].dir.y = rawY;
 	}
 
 	double TA = 0.0;
