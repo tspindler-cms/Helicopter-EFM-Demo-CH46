@@ -626,7 +626,7 @@ bool ed_fm_need_to_be_repaired()
 // enable debug information like force vector and velocity vector visualization
 bool ed_fm_enable_debug_info()
 {
-	return false;
+	return true;
 }
 
 

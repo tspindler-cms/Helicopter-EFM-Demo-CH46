@@ -137,7 +137,7 @@ private:
     //============== Main rotor constants ============== 
     const double RMR{ 25.0 };				// main rotor radius, [ft] (15.24 m diameter)
     const double BLMR{ 0.0 };				// buttline pos(left/right) MR, [inch]
-    const double FSMR{ 217.354 };			// fuselage station MR, [inch] (5.5208 m)
+    const double FSMR{ -217.354 };			// fuselage station MR, [inch] (5.5208 m)
     const double WLMR{ 119.457 };			// waterline MR, [inch] (3.0342 m)
     const double BMR{ 0.97 };				// MR blade tip loss factor
     const double CR{ 1.2697 };				// blade chord, [ft] (0.387 m)
@@ -147,7 +147,7 @@ private:
     const double Mb{ 120.4 };				// blade first mass moment about hinge, slugs [ft]
     const double Wb{ 155.0 };				// blade weight, [lb] (CH-46D ~70.3 kg)
     const double Theta1{ -8.0 };				//main rotor blade twist, [deg/unit radius]
-    const double iS{ -9.51 * Convert::degToRad }; // front shaft tilt, [rad] (forward)
+    const double iS{ -1.51 * Convert::degToRad }; // front shaft tilt, [rad] (forward)
     const double Kbeta{ 0.0 };				    //flapping hinge spring const, [ft lb/rad]    // this is 0 for articulated rotors
     const double KbetaDot{ 0.0 };				//flapping hinge rate damp const, [ft lb sec/rad]
     const double betaUp{ 25.0 * Convert::degToRad };   // blade flapping upper limit, [rad]
@@ -178,13 +178,13 @@ private:
     const double SAVT{ 23.68 };      // Vertical tail equivalent area, [ft^2] (2.2 m^2)
 
     //============== Tandem Rotor Constants (CH-46D: vwv_ch46d_base.lua) ===============
-    const double FSRR{ -187.5 }; // rear rotor fuselage station, [in] (-4.7625 m)
+    const double FSRR{ 187.5 }; // rear rotor fuselage station, [in] (-4.7625 m)
     const double WLRR{ 174.724 };  // rear rotor waterline, [in] (4.438 m)
     const double BLRR{ 0.0 };   // rear rotor buttline, [in]
     const double centeringDCP{ -5.393 }; // baseline front-rear differential collective [deg]
     const double rearCollectiveAuthority{ 4.0 }; // pedal-to-collective differential, [deg]
     const double pitchCollectiveBias{ 3.0 }; // pitch input collective split, [deg]
-    const double iSRR{ -7.0 * Convert::degToRad }; // rear shaft tilt, [rad] (forward)
+    const double iSRR{ -2.0 * Convert::degToRad }; // rear shaft tilt, [rad] (forward)
     const double rearRotationSign{ -1.0 }; // rear rotor counter-rotation sign
     const double tandemInducedPowerFactor{ 1.18 };  // CH-46: ~18% more induced power due to wake interference (thrust_correction 0.85)
     const double rearRotorWakeFraction{ 0.35 };     // CH-46: ~34% overlap, fraction of front wake reaching rear disk
