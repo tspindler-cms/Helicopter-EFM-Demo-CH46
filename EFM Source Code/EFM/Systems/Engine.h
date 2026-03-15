@@ -14,7 +14,10 @@
 // engine data tables
 constexpr static const int _N1_Points = 9;
 static double _N1percent[_N1_Points] = { 0.0, 20.0,  62.0,  80.0,  95.0,  98.0,  100.0,  105.0, 106.0};
-static double _HP_data[_N1_Points] =   { 0.0,  0.0,  45.0, 135.0, 312.0, 370.0,  400.0,  425.0, 575.0};
+// new array for CH-46D
+// static double _HP_data[_N1_Points] =   { 0.0,  0.0,  45.0, 135.0, 312.0, 370.0,  400.0,  425.0, 575.0};
+// static double _HP_data[_N1_Points] =   { 0.0, 0.0, 420.0, 1150.0, 2200.0, 2550.0, 2800.0, 2950.0, 3200.0};
+static double _HP_data[_N1_Points] =   { 0.0, 0.0, 840.0, 2300.0, 4400.0, 5100.0, 5600.0, 5900.0, 6400.0};
 
 class TurboshaftEngine
 {
@@ -335,3 +338,4 @@ public:
         G_Params.cautionLight[CL_XmsnPress] = oilPressure < 15;
     }
 };
+

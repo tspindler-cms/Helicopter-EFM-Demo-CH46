@@ -18,7 +18,7 @@
 
 
 #define NUM_BLADE_SEGMENTS 8
-#define NUM_BLADES 5
+#define NUM_BLADES 6
 //#define USE_LAG_DOF
 static const double OmegaT = 49.7419; //main rotor nominal rotational velocity, [rad/sec] (475 RPM = 49.741884 rad/s)
 
@@ -125,11 +125,13 @@ private:
     const double BLCG{ 0.0 };		//Center of Gravity Buttline position(lateral;y), [inch]
     //============== Main rotor constants ============== 
     const double RMR{ 13.167 };				// main rotor radius, [ft]
+    //const double RMR{ 25.0 };				// main rotor radius, [ft]
     const double BLMR{ 0.0 };				// buttline pos(left/right) MR, [inch]
     const double FSMR{ 100.0 };				// fuselage station MR, [inch]
     const double WLMR{ 83.0 };				// waterline MR, [inch]
     const double BMR{ 0.97 };				// MR blade tip loss factor
-    const double CR{ 0.5625 };				// blade root chord, [ft]
+    // const double CR{ 0.5625 };				// blade root chord, [ft]
+    const double CR{ 1.266 };				// blade root chord, [ft]
     const double e{ 0.46 };					// MR flap hinge offset, [ft]         this affects how strong the moments are on the hub
     const double ePrime{ 1.125 };			// distance from hinge to blade start, [ft]   this affects amount of blade area  
     const double Ib{ 85.0 };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
