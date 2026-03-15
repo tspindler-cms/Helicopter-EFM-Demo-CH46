@@ -18,9 +18,9 @@
 
 
 #define NUM_BLADE_SEGMENTS 8
-#define NUM_BLADES 6
+#define NUM_BLADES 3
 //#define USE_LAG_DOF
-static const double OmegaT = 49.7419; //main rotor nominal rotational velocity, [rad/sec] (475 RPM = 49.741884 rad/s)
+static const double OmegaT = 27.6; // was AH-6J 49.7419; //main rotor nominal rotational velocity, [rad/sec] (475 RPM = 49.741884 rad/s)
 
 class CH46DAero
 {
@@ -124,8 +124,8 @@ private:
     const double WLCG{ 49.6 };		//Center of Gravity Waterline position(vertical;z), [inch]
     const double BLCG{ 0.0 };		//Center of Gravity Buttline position(lateral;y), [inch]
     //============== Main rotor constants ============== 
-    const double RMR{ 13.167 };				// main rotor radius, [ft]
-    //const double RMR{ 25.0 };				// main rotor radius, [ft]
+    // const double RMR{ 13.167 };				// main rotor radius, [ft]
+    const double RMR{ 25.0 };				// main rotor radius, [ft]
     const double BLMR{ 0.0 };				// buttline pos(left/right) MR, [inch]
     const double FSMR{ 100.0 };				// fuselage station MR, [inch]
     const double WLMR{ 83.0 };				// waterline MR, [inch]
@@ -134,11 +134,11 @@ private:
     const double CR{ 1.266 };				// blade root chord, [ft]
     const double e{ 0.46 };					// MR flap hinge offset, [ft]         this affects how strong the moments are on the hub
     const double ePrime{ 1.125 };			// distance from hinge to blade start, [ft]   this affects amount of blade area  
-    const double Ib{ 85.0 };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
-    const double Mb{ 3.5 };				    // blade first mass moment about hinge, slugs [ft]   lower==more stable, higher==more control  
-    const double Wb{ 40.0 };				// blade weight, [lb] 37.25
+    const double Ib{ 1044.0 };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
+    const double Mb{ 120.4 };				    // blade first mass moment about hinge, slugs [ft]   lower==more stable, higher==more control  
+    const double Wb{ 155.0 };				// blade weight, [lb] 37.25
     const double Theta1{ -8.0 };				//main rotor blade twist, [deg/unit radius]
-    const double iS{ -3.0 * Convert::degToRad }; // MR shaft tilt, rad (negative=forward)  
+    const double iS{ -1.0 * Convert::degToRad }; // MR shaft tilt, rad (negative=forward)  
     const double Kbeta{ 0.0 };				    //flapping hinge spring const, [ft lb/rad]    // this is 0 for articulated rotors
     const double KbetaDot{ 0.0 };				//flapping hinge rate damp const, [ft lb sec/rad]
     const double betaUp{ 25.0 * Convert::degToRad };   // blade flapping upper limit, [rad]
@@ -155,8 +155,8 @@ private:
 
 
     //============== Fuselage constants =================
-    const double SPF{ 26.0 };       // Plan (front) area of fuselage, [ft^2]
-    const double SSF{ 60.0 };       // Side area of fuselage, [ft^2]
+    const double SPF{ 100.54 };       // Plan (front) area of fuselage, [ft^2]
+    const double SSF{ 230.0 };       // Side area of fuselage, [ft^2]
 
     //============== Tail constants =====================
     const double EKTR{ 0.0 };		// tail rotor wash factor on vert tail
@@ -187,7 +187,7 @@ private:
     const double KlambdaPrimeTR{ 0.1 };			//downwash loop filter const 
 
     //============== Gearbox Constants ==================
-    const double JMR = 600.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
+    const double JMR = 3276.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
     const double JE = 150.0;//engine (N2 turbine) inertia, [slug-ft^2]
     const double KFRQ = 25.0;// MR torque filter constant
 
