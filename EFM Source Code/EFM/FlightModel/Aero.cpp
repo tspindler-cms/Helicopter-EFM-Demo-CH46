@@ -126,6 +126,7 @@ void CH46DAero::MainRotorModule()
 	double rS = p * sin(iS) + r * cos(iS);					//shaft axis yaw rate, [rad/sec]
 
 	double MuTOT = sqrt(MuXS * MuXS + MuYS * MuYS + LambdaMR * LambdaMR);// total velocity at hub wth downwash, non dimensionalized
+	MuTOT = limit(MuTOT, 0.001, 100.0); // prevent divide by zero	
 	double KGL = sqrt(pow(MuXS, 2) + pow(MuYS, 2)) / MuTOT;//1st harmonic inflow coef
 	double K1X = KGL * (MuXS / MuTOT);//cos component of 1st harmonic 
 	double K1Y = KGL * (MuYS / MuTOT);//sin component of 1st harmonic 
@@ -157,7 +158,11 @@ void CH46DAero::MainRotorModule()
 	}
 
 	double Z_rotor = limit(p_EFMdata.altitudeAGL_ft  + (WLMR - WLCG) / 12.0, 1.0, 1000.0);//rotor height above ground, [ft] 	(limit to avoid divide by zero)
-	double Kge = limit(pow(1.0 + 0.13 * pow(RMR / Z_rotor, 2) * LambdaMR / sqrt(pow(MuXS, 2) + pow(MuYS, 2) + pow(LambdaMR, 2)), -2.0 / 3.0), 1.0, 1.5);//ground effect gain factor
+	double denomGE = sqrt(pow(MuXS, 2) + pow(MuYS, 2) + pow(LambdaMR, 2));
+	denomGE = (denomGE > 1e-6) ? denomGE : 1e-6; // avoid divide-by-zero
+	double baseGE = 1.0 + 0.13 * pow(RMR / Z_rotor, 2) * LambdaMR / denomGE; // LambdaMR < 0 => base can go negative for large RMR / low Z_rotor
+	baseGE = (baseGE > 1e-6) ? baseGE : 1e-6;   // pow(negative, -2/3) is NaN; clamp so Kge stays defined
+	double Kge = limit(pow(baseGE, -2.0 / 3.0), 1.0, 1.5);//ground effect gain factor
 
 	//---------------------------
 	//----Calculations for each blade-------
