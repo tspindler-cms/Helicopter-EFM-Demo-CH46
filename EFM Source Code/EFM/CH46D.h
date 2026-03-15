@@ -34,7 +34,7 @@ ElectricSystem Electrics;
 FlightControls flightControls;
 LightSystem Lighting;
 TurboshaftEngine Engine(EFMdata, flightControls);
-AH6Aero Aero(EFMdata, damageModel, flightControls);
+CH46DAero Aero(EFMdata, damageModel, flightControls);
 
 
 
