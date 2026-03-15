@@ -34,7 +34,7 @@ static ElectricSystem* Electrics = NULL;
 static FlightControls* flightControls = NULL;
 static LightSystem* Lighting = NULL;
 static TurboshaftEngine* Engine = NULL;
-static AH6Aero* Aero = NULL;
+static CH46DAero* Aero = NULL;
 
 void createHeli()
 {
@@ -45,7 +45,7 @@ void createHeli()
 	flightControls = new FlightControls;
 	Lighting = new LightSystem;
 	Engine = new TurboshaftEngine(*EFMdata, *flightControls, *Electrics);
-	Aero = new AH6Aero(*EFMdata, *damageModel, *flightControls);
+	Aero = new CH46DAero(*EFMdata, *damageModel, *flightControls);
 }
 void releaseHeli()
 {

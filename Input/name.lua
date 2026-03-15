@@ -1,1 +1,1 @@
-return _('AH-6J')
+return _('[VWV] CH-46D Sea Knight (Flyable)')
