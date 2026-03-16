@@ -2,8 +2,11 @@ ViewSettings = {
 	Cockpit = {
 	[1] = {-- player slot 1 (pilot)
 		CameraViewAngleLimits  = {20,140},-- FOV Min Max (how much zoom in/out)
-		CockpitLocalPoint      = {0.617,0.12116,0.0},	--where to line up center of cockpit model  {forward/back,up/down,left/right}
-		CameraAngleRestriction = {false,90,0.50}, 
+		-- AH-6J Cockpit
+		-- CockpitLocalPoint      = {5.4152, 1.2022, 0.0},	--where to line up center of cockpit model  {forward/back,up/down,left/right}
+		-- CH-46D Cockpit
+		CockpitLocalPoint      = {5.4152, 1.2022, 0.0},	--where to line up center of cockpit model  {forward/back,up/down,left/right}
+		CameraAngleRestriction = {false,90,0.50},
 		CameraAngleLimits      = {200,-90,90}, -- View right/left, View down/up
 		EyePoint               = {0.1,0.10,0.0}, -- Distance from pivot point. To simulate pivot around human neck, use {0.16,0.1,0}
 		ShoulderSize		   = 0.25,
@@ -12,7 +15,9 @@ ViewSettings = {
 	},
 	[2] = {-- player slot 2 (copilot)
 		CameraViewAngleLimits  = {20,140},
-		CockpitLocalPoint      = {0.617,0.12116,0.0},
+		-- CockpitLocalPoint      = {5.4152, 1.2022, 0.0},
+		-- CH-46D Cockpit
+		CockpitLocalPoint      = {5.4152, 1.2022, 0.0},	--where to line up center of cockpit model  {forward/back,up/down,left/right}
 		CameraAngleRestriction = {false,90,0.50},
 		CameraAngleLimits      = {200,-90,90},
 		EyePoint               = {0.15,0.10,0.0},
@@ -20,15 +25,15 @@ ViewSettings = {
 		Allow360rotation	   = false,
 		limits_6DOF            = {x = {0.0,2},y ={-1,1},z = {-1,1},roll = 90.000000},
 	},
-	}, 
+	},
 	Chase = { -- F4 view
 		LocalPoint      = {-0.4,-1.0,2},
 		AnglesDefault   = {0.000000,0.000000},
-	},  
+	},
 	Arcade = {
 		LocalPoint      = {-21.500000,5.000,0.000000},
 		AnglesDefault   = {0.000000,-8.000000},
-	}, 
+	},
 }
 
 local function head_pos_default(tab)
@@ -39,7 +44,7 @@ local function head_pos_default(tab)
 	tab.viewAngle = tab.viewAngle  or 75 -- FOV
 	tab.hAngle    = tab.hAngle     or  0
 	tab.vAngle    = tab.vAngle     or -8 -- angles down pilot view
-	tab.x_trans   = tab.x_trans    or  0.0 --moves pilot view forward 
+	tab.x_trans   = tab.x_trans    or  0.0 --moves pilot view forward
 	tab.y_trans   = tab.y_trans    or  0.0 -- moves view up
 	tab.z_trans   = tab.z_trans    or  0.3466  -- moves view to right seat
 	tab.rollAngle = tab.rollAngle  or  0

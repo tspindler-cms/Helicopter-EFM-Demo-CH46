@@ -1,4 +1,5 @@
-shape_name  	 			 = "Cockpit_AH-6J"
+-- shape_name  	 			 = "Cockpit_AH-6J"
+shape_name  	 			 = "ch46d_inside"
 draw_pilot					 = false
 
 

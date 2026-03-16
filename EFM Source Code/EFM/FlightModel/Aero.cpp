@@ -87,7 +87,7 @@ void CH46DAero::update(double engtorque)
 // check control input pitch amounts
 void CH46DAero::MainRotorModule()
 {
-	double ThetaCUFF = p_flightControl.CollectiveInput * 19.0 + 2.0;//impressed MR collective pitch, [deg]
+	double ThetaCUFF = p_flightControl.CollectiveInput * 26.0 + 2.0;//impressed MR collective pitch, [deg] (2–28°; was 19 for AH-6J; CH-46D needs more range for heavy lift)
 	double A1S = p_flightControl.rollOutput * 8.0;//total lat cyclic input, -8 to 8 [deg]
 	double B1S = p_flightControl.pitchOutput * 12.0;//total long cyclic input, -11 to 15 [deg]
 
