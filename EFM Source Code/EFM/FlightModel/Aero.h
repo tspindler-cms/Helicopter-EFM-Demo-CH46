@@ -175,7 +175,7 @@ private:
     const double OmegaTR_T{ 297.2 };	//TR nominal rotational speed, [rad/sec] (297.2 = 2838rpm)
     const int bNTR{ 2 };				//number of TR blades
     const double cTR{ 0.4 };			//TR blade chord, [ft]
-    const double RTR{ 2.375 };			//TR radius, [ft]
+    const double RTR{ 5.0 };			//TR radius, [ft]
     const double aTR{ 5.6 };			//tail rotor blade lift curve slope, [1/rad]
     const double BTR{ 0.94 };			//TR blade tip loss factor
     const double KTRBLK{ 0.94 };			//fin-tail blockage factor ***estimate
