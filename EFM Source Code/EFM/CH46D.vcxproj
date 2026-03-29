@@ -90,6 +90,7 @@
     <ClInclude Include="CH46D.h" />
     <ClInclude Include="EFMData.h" />
     <ClInclude Include="FlightModel\Aero.h" />
+    <ClInclude Include="FlightModel\RotorDisk.h" />
     <ClInclude Include="FlightModel\aero_coefficients.h" />
     <ClInclude Include="FlightModel\NACA0015_airfoil.h" />
     <ClInclude Include="include\Cockpit\ccParametersAPI.h" />
@@ -121,6 +122,7 @@
     </ClCompile>
     <ClCompile Include="CH46D.cpp" />
     <ClCompile Include="FlightModel\Aero.cpp" />
+    <ClCompile Include="FlightModel\RotorDisk.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

@@ -11,6 +11,7 @@ SOURCES := \
 	dllmain.cpp \
 	CH46D.cpp \
 	FlightModel/Aero.cpp \
+	FlightModel/Rotordisk.cpp \
 	stdafx.cpp
 
 INCLUDES := -I./include

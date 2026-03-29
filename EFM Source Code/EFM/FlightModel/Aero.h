@@ -12,6 +12,7 @@
 // Data tables for this aircraft
 #include "NACA0015_airfoil.h"
 #include "aero_coefficients.h"
+#include "RotorDisk.h"
 
 #include "../EFMData.h"
 #include "../Include/Cockpit/CockpitAPI.h" // Provides param handle interfacing for use in lua
@@ -63,8 +64,6 @@ public:
     void update(double engtorque);
 
    
-    void MainRotorModule();
-    void RearRotorModule();
     void FuselageModule();
     void EmpennageModule();
     void RotorDegreeOfFreedom(double engtorque);
@@ -336,6 +335,11 @@ private:
     double OmegaE = 0.0;//engine shaft speed (N2), [rad/sec]
     bool isRotorBrakeEngaged = false;
 
+    RotorDiskConfig rotorCfgFront_{};
+    RotorDiskConfig rotorCfgRear_{};
+
+    void advanceRotorDisk(RotorId id, const RotorDiskConfig& cfg, double thetaC, double a1, double b1, double dwOtherNormalized);
 };
+
 
 
