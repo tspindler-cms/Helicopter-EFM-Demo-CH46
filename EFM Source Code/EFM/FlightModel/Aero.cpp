@@ -1,6 +1,14 @@
 #include "Aero.h"
 #include <cmath>
 
+// Set to 1 to log engine torque and flight controls before rotor integration (view with DebugView / MSVC output).
+#ifndef CH46_LOG_PRE_ROTOR
+#define CH46_LOG_PRE_ROTOR 0
+#endif
+#if CH46_LOG_PRE_ROTOR
+#include <cstdio>
+#endif
+
 //!!!!!!!!!!! TODO bugs/missing stuff: !!!!!!!!!!!!
 //rotor wash factors
 
@@ -128,6 +136,28 @@ void CH46DAero::update(double engtorque)
 	double b1Front = 0.0;
 	double b1Rear = 0.0;
 	TandemRotorControlMix(thetaFront, thetaRear, a1Front, a1Rear, b1Front, b1Rear);
+#if CH46_LOG_PRE_ROTOR
+	{
+		char buf[384];
+		snprintf(buf, sizeof(buf),
+			"[CH46 pre-rotor] t=%.4f Q_eng=%.1f [ft-lb] stick R/P=%.4f/%.4f rudder=%.4f coll=%.4f | out R/P=%.4f/%.4f thetaF/R=%.2f/%.2f a1F/R=%.2f/%.2f b1F/R=%.2f/%.2f\n",
+			p_EFMdata.time,
+			engtorque,
+			p_flightControl.RollInput,
+			p_flightControl.PitchInput,
+			p_flightControl.PedalInput,
+			p_flightControl.CollectiveInput,
+			p_flightControl.rollOutput,
+			p_flightControl.pitchOutput,
+			thetaFront,
+			thetaRear,
+			a1Front,
+			a1Rear,
+			b1Front,
+			b1Rear);
+		OutputDebugStringA(buf);
+	}
+#endif
 	frontCollectiveDeg = thetaFront;
 	rearCollectiveDeg = thetaRear;
 	advanceRotorDisk(RotorId::Front, rotorCfgFront_, thetaFront, a1Front, b1Front, 0.0);
