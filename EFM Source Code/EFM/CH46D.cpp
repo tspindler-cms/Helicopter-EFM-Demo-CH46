@@ -427,17 +427,17 @@ void ed_fm_set_command(int command, float value)
 		flightControls.setCyclicRight();
 		break;
 	
-    case 3120: damageModel.setRotorGroupElement(false,value); break;
-    case 3121: damageModel.setRotorGroupElement(true,value); break;
+    case (int)device_commands::RotorGroupDamageFwd: damageModel.setRotorGroupElement(false,value); break;
+    case (int)device_commands::RotorGroupDamageAft: damageModel.setRotorGroupElement(true,value); break;
     // SYS-01: unbound input commands; existing shared throttle/starter retained.
-    case 3110: if(value>0.5)Fuel.setEngineValve(0,true); break;
-    case 3111: if(value>0.5)Fuel.setEngineValve(0,false); break;
-    case 3112: if(value>0.5)Fuel.setEngineValve(1,true); break;
-    case 3113: if(value>0.5)Fuel.setEngineValve(1,false); break;
-    case 3114: Engine.setStarter(0,value>0.5); break;
-    case 3115: Engine.setStarter(1,value>0.5); break;
-    case 3116: if(value>0.5)Fuel.setCrossfeed(true); break;
-    case 3117: if(value>0.5)Fuel.setCrossfeed(false); break;
+    case (int)device_commands::Eng1FuelValveOpen: if(value>0.5)Fuel.setEngineValve(0,true); break;
+    case (int)device_commands::Eng1FuelValveClose: if(value>0.5)Fuel.setEngineValve(0,false); break;
+    case (int)device_commands::Eng2FuelValveOpen: if(value>0.5)Fuel.setEngineValve(1,true); break;
+    case (int)device_commands::Eng2FuelValveClose: if(value>0.5)Fuel.setEngineValve(1,false); break;
+    case (int)device_commands::Eng1Starter: Engine.setStarter(0,value>0.5); break;
+    case (int)device_commands::Eng2Starter: Engine.setStarter(1,value>0.5); break;
+    case (int)device_commands::FuelCrossfeedOpen: if(value>0.5)Fuel.setCrossfeed(true); break;
+    case (int)device_commands::FuelCrossfeedClose: if(value>0.5)Fuel.setCrossfeed(false); break;
 	case (int)device_commands::starterButton:
 		Engine.starterButtonOn = value > 0.0;
 		break;
