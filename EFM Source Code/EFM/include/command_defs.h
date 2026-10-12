@@ -165,5 +165,16 @@ enum class device_commands // commands for lua
 	ARC186_load = 3118,
 	ARC186_SquelchToneSw = 3119,
 
+	Eng1FuelValveOpen = 3120,
+	Eng1FuelValveClose = 3121,
+	Eng2FuelValveOpen = 3122,
+	Eng2FuelValveClose = 3123,
+	Eng1Starter = 3124,
+	Eng2Starter = 3125,
+	FuelCrossfeedOpen = 3126,
+	FuelCrossfeedClose = 3127,
+	RotorGroupDamageFwd = 3128,
+	RotorGroupDamageAft = 3129,
+
 
 };

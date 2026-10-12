@@ -157,6 +157,17 @@ device_commands = { -- commands for lua
 	ARC186_load = counter(),
 	ARC186_SquelchToneSw = counter(),
 
+	Eng1FuelValveOpen = counter(),
+	Eng1FuelValveClose = counter(),
+	Eng2FuelValveOpen = counter(),
+	Eng2FuelValveClose = counter(),
+	Eng1Starter = counter(),
+	Eng2Starter = counter(),
+	FuelCrossfeedOpen = counter(),
+	FuelCrossfeedClose = counter(),
+	RotorGroupDamageFwd = counter(),
+	RotorGroupDamageAft = counter(),
+
 
 }
 
