@@ -55,7 +55,7 @@ enum ExternalAnimationArgs
 	EXT_CyclicRoll = 11,
 	EXT_CyclicPitch = 15,
 	//EXT_Pedals = 17,
-	EXT_RotorDroop = 36,
+	EXT_RotorDroop = 1036,
 	EXT_RotorSpin = 37,//this is control arg, actual arg is 40
 	EXT_TRspin = 42,//this is control arg, actual arg is 41
 	EXT_NavLights = 190,

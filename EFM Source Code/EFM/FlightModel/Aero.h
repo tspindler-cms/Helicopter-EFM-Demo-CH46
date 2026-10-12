@@ -14,23 +14,25 @@
 #include "aero_coefficients.h"
 
 #include "../EFMData.h"
-#include "../Include/Cockpit/CockpitAPI.h" // Provides param handle interfacing for use in lua
+#include "../include/Cockpit/CockpitAPI.h" // Provides param handle interfacing for use in lua
+#include "TandemConfig.h"
+#include "RotorMechanics.h"
 
 
 #define NUM_BLADE_SEGMENTS 8
 #define NUM_BLADES 3
 //#define USE_LAG_DOF
-static const double OmegaT = 27.6; // was AH-6J 49.7419; //main rotor nominal rotational velocity, [rad/sec] (475 RPM = 49.741884 rad/s)
+static const double OmegaT = CH46::nominalRotorOmega;
 
 class CH46DAero
 {
 public:
-	CH46DAero(EFMData &ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl);
+	CH46DAero(EFMData &ptr_EFMdata, AH6JDamage& ptr_Damage, FlightControls& ptr_fltCntrl, bool aftRotor = false);
 	~CH46DAero() {}
 
-    EFMData* p_EFMdata;
-    AH6JDamage* p_Damage;
-    FlightControls* p_flightControl;
+    EFMData& p_EFMdata;
+    AH6JDamage& p_Damage;
+    FlightControls& p_flightControl;
 
 	std::vector<ForceComponent> aeroForces{};
     std::vector<Vec3> aeroMoments{};
@@ -60,14 +62,53 @@ public:
     void InitializeOn();
     //void Release();
 
-    void update(double engtorque);
+    void update(double engtorque, double availablePowerHP=-1.0);
 
    
-    void MainRotorModule();
+    void MainRotorModule(double collectiveDeg, double lateralCyclicDeg, double longitudinalCyclicDeg);
     void FuselageModule();
-    void EmpennageModule();
-    void TailRotorModule();
-    void RotorDegreeOfFreedom(double engtorque);
+    void RotorDegreeOfFreedom(double engtorque, double availablePowerHP=-1.0);
+    void ResetRotorStates();
+    // Exposed for the standalone rotor/load checks, not a DCS control.
+    void evaluateRotors();
+    // DBG-11: host-frame means, observed during each rotor substep.
+    double appliedEnginePowerHP=0, appliedEngineTorque=0, clutchTorqueMean=0;
+    // DBG-13: same host-frame averaging interval as exported loads.
+    double frontLoadMean=0, aftLoadMean=0, shaftBalanceErrorNm=0;
+    double clutchEngagedFraction=0, rotorSpeedLimitFraction=0;
+    unsigned rotorSubsteps=1;
+    double rotorStepSeconds=0.0; // NUM-01 internal integration resolution, seconds.
+    double pitchAngleRate = 0.0, pitchRateFeedback = 0.0, mixedPitchInput = 0.0; // FCS-02 rad/s and normalized commands
+    double rollRateFeedback = 0.0, yawRateFeedback = 0.0; // read-only telemetry, normalized
+    double mixedRollInput = 0.0, mixedPedalInput = 0.0;
+    double frontLoadTorque() const { return QMR; } // ft-lb, signed aerodynamic load
+    double aftLoadTorque() const { return aft_ ? aft_->QMR : 0.0; }
+    double frontThrust() const { return rotorThrustN_; }
+    double aftThrust() const { return aft_ ? aft_->rotorThrustN_ : 0.0; }
+
+    // DBG-04 (0.1.4): read-only blade/inflow snapshots. These values are not
+    // control inputs and do not change the rotor solver or its integration.
+    struct RotorDebugState {
+        double maxFlapDeg=0, flapLimitBlades=0, inflow=0, downwash=0;
+        double phaseRad=0, minBladeHealth=1;
+    };
+    RotorDebugState debugRotorState(bool aft) const {
+        const CH46DAero* rotor = aft ? aft_.get() : this;
+        RotorDebugState out;
+        if (!rotor) return out;
+        out.inflow=rotor->LambdaMR; out.downwash=rotor->DWMR;
+        out.phaseRad=rotor->PsiMR;
+        for (int b=0;b<NUM_BLADES;++b) {
+            out.maxFlapDeg=std::max(out.maxFlapDeg,std::abs(rotor->Beta[b])*Convert::radToDeg);
+            if (rotor->Beta[b]>=rotor->betaUp-1e-9 || rotor->Beta[b]<=rotor->betaDown+1e-9)
+                out.flapLimitBlades+=1;
+            // Existing prototype uses the same blade-damage indices for both
+            // rotors. Exposing this does not validate that damage mapping.
+            out.minBladeHealth=std::min(out.minBladeHealth,
+                rotor->p_Damage.bladeHealth(rotor->isAft_,b));
+        }
+        return out;
+    }
 
 
     void setBodyStates(double ax, double ay, double az,
@@ -88,12 +129,23 @@ public:
         VXB = (vx - wind_vx) * Convert::meterToFoot; // X velocity [ft/s]
         VYB = (vz - wind_vz) * Convert::meterToFoot;
         VZB = -(vy - wind_vy) * Convert::meterToFoot;
+        // KIN-01 (0.1.5): these historical *Dot names store inertial
+        // acceleration resolved in body axes, NOT body-velocity derivatives.
         VXBDot = ax * Convert::meterToFoot;// X acceleration [ft/s^2]
         VYBDot = az * Convert::meterToFoot;
         VZBDot = -ay * Convert::meterToFoot;
 
         PhiB = roll;
         ThetaB = pitch;
+        // The inherited blade solver rotates one way. Mirror lateral polar
+        // vectors and roll/yaw axial vectors for the opposite-turning rotor.
+        if (isAft_) {
+            VYB = -VYB; VYBDot = -VYBDot;
+            p = -p; r = -r; pDot = -pDot; rDot = -rDot; PhiB = -PhiB;
+        }
+        if (aft_) aft_->setBodyStates(ax, ay, az, vx, vy, vz,
+            wind_vx, wind_vy, wind_vz, omegadotx, omegadoty, omegadotz,
+            omegax, omegay, omegaz, yaw, pitch, roll);
     }
 
     double getMRomega()
@@ -119,33 +171,35 @@ public:
     }
 
 private:
+    bool isAft_ = false;
+    std::unique_ptr<CH46DAero> aft_;
+    double rotorThrustN_ = 0.0;
     //============== Overall constants ============== 
     const double FSCG{ 100 };		//Center of Gravity Fuselage Station position(longitudinal;x), [inch]
     const double WLCG{ 49.6 };		//Center of Gravity Waterline position(vertical;z), [inch]
     const double BLCG{ 0.0 };		//Center of Gravity Buttline position(lateral;y), [inch]
     //============== Main rotor constants ============== 
     // const double RMR{ 13.167 };				// main rotor radius, [ft]
-    const double RMR{ 25.0 };				// main rotor radius, [ft]
+    const double RMR{ CH46::bladeRadiusFt };				// main rotor radius, [ft]
     const double BLMR{ 0.0 };				// buttline pos(left/right) MR, [inch]
     const double FSMR{ 100.0 };				// fuselage station MR, [inch]
     const double WLMR{ 83.0 };				// waterline MR, [inch]
     const double BMR{ 0.97 };				// MR blade tip loss factor
     // const double CR{ 0.5625 };				// blade root chord, [ft]
     const double CR{ 1.266 };				// blade root chord, [ft]
-    const double e{ 0.46 };					// MR flap hinge offset, [ft]         this affects how strong the moments are on the hub
+    const double e{ CH46::bladeHingeOffsetFt };					// MR flap hinge offset, [ft]         this affects how strong the moments are on the hub
     const double ePrime{ 1.125 };			// distance from hinge to blade start, [ft]   this affects amount of blade area  
-    const double Ib{ 1044.0 };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
-    const double Mb{ 120.4 };				    // blade first mass moment about hinge, slugs [ft]   lower==more stable, higher==more control  
-    const double Wb{ 155.0 };				// blade weight, [lb] 37.25
+    const double Ib{ CH46::bladeHingeInertia };				// main rotor blade inertia about hinge, slugs [ft^2]  46.8
+    const double Mb{ CH46::bladeFirstMassMoment };				    // MASS-01 derived first moment, slug-ft; see RotorMechanics.h  
+    const double Wb{ CH46::bladeWeightLbf };				// blade weight, [lb] 37.25
     const double Theta1{ -8.0 };				//main rotor blade twist, [deg/unit radius]
-    const double iS{ -1.0 * Convert::degToRad }; // MR shaft tilt, rad (negative=forward)  
+    double iS = 0.0; // shaft tilt from TandemConfig, rad (negative=forward)
     const double Kbeta{ 0.0 };				    //flapping hinge spring const, [ft lb/rad]    // this is 0 for articulated rotors
     const double KbetaDot{ 0.0 };				//flapping hinge rate damp const, [ft lb sec/rad]
     const double betaUp{ 25.0 * Convert::degToRad };   // blade flapping upper limit, [rad]
     const double betaDown{ -25.0 * Convert::degToRad };// blade flapping lower limit, [rad]
     const double KlambdaPrime{ 0.3 };			       //downwash loop filter time const, [Seconds]
-    const double KfPrime{ 0.15 };			            //MR force filter time const, [Seconds]
-    const double DeltaSP{ -12.0 * Convert::degToRad };	//swashplate rotation, [rad]
+    const double DeltaSP{ 0.0 }; // provisional neutral phasing; AH-6 offset removed
     //const double DeltaCD{ 0.005 };			            //blade drag coef   
     const double delt3{ 0.0 };		                // pitch-flap coupling(AKA Delta3), [rad] 
     //const double KDeltDot{ 1550.0 };	        // lag damper, [ft lb sec/rad]   this effects retreating blade stall onset
@@ -187,7 +241,7 @@ private:
     const double KlambdaPrimeTR{ 0.1 };			//downwash loop filter const 
 
     //============== Gearbox Constants ==================
-    const double JMR = 3276.0;// inertia of MR, [slug-ft2] can be estimated J=N*I_B
+    const double JMR = CH46::tandemBladeInertia; // MASS-01: six blades about their shafts, slug-ft^2
     const double JE = 150.0;//engine (N2 turbine) inertia, [slug-ft^2]
     const double KFRQ = 25.0;// MR torque filter constant
 
@@ -286,11 +340,8 @@ private:
 
     // Rotor Degree Of Freedom (DOF)
     double QMR = 0.0;// MR torque shaft axis, [ft-lb]
-    double QMRfiltered = 0.0;// filtered MR torque, [ft-lb]
     bool isClutchEngaged = true;
     double OmegaE = 0.0;//engine shaft speed (N2), [rad/sec]
     bool isRotorBrakeEngaged = false;
 
 };
-
-

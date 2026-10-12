@@ -1,8 +1,10 @@
 #pragma once
+#include "../FlightModel/TandemConfig.h"
+#include <cmath>
+#include <vector>
  
- // using JP-8 fuel @6.7lb/gallon
- // 
-// TODO: add 2nd aux tank logic
+
+// TODO: transfer of fuel between tanks (need handle added in 3d model)
 
 class FuelTank
 {
@@ -35,8 +37,13 @@ public:
 	{
 		if (currentFuel < decrement)
 		{
-			currentFuel = 0.0; // set to min
-			return decrement - currentFuel; // remaining
+            // FUEL-01: preserve available fuel BEFORE emptying the tank.
+            // Example: 0.5 kg available, 1 kg requested -> 0.5 kg still needed.
+            // Subtracting after setting currentFuel=0 passed the full request
+            // onward and burned the last 0.5 kg twice across the tank boundary.
+            const double available = currentFuel;
+            currentFuel = 0.0;
+            return decrement - available;
 		}
 		currentFuel -= decrement;
 		return 0.0;
@@ -44,162 +51,72 @@ public:
 
 };
 
-class FuelSystem
-{
-private:
-	EDPARAM cockpitAPI;
-
-	bool isUnlimitedFuel = false;
-	bool isIdleCutoff = false; // true means no fuel flow
-	float auxValvePos = 0;
-	bool shutoffValveOpen = true;
-
-	FuelTank MainTank{ 401 / Convert::kg_to_lb };
-	FuelTank AftTank{ 412 / Convert::kg_to_lb };// aux tank #1
-
-	const double fuelCautionAmt = 80.0 * Convert::lb_to_kg;// caution light threshold
-	const double Fuel_transferRate_kgs = 197.0/3600.0;//manual says 65gal/hr == 435lb/hr == 197kg/hr
-
-	EFMData* p_EFMdata;
-
-	void* MainFuelTank_lb = cockpitAPI.getParamHandle("MainFuelTank_lb");
-	void* AftFuelTank_lb = cockpitAPI.getParamHandle("AftFuelTank_lb");
-
+// FUEL-05: left/right cells normally feed their corresponding engines.
+// The supplied H-46D manual sections 2.5.2.2 and 2.5.2.6 describe crossfeed
+// and separate low-level indications. No pump-pressure or tank-location/CG
+// model is claimed; both mass deltas remain at the existing model origin.
+class FuelSystem {
+    FuelTank tanks_[2]{{CH46::fuelReservoirCapacityKg},{CH46::fuelReservoirCapacityKg}};
+    bool isUnlimitedFuel=false,isIdleCutoff=false,crossfeed_=false;
+    bool valve_[2]{true,true};
+    void refresh(){isFuelFlow=hasEngineFuel(0)||hasEngineFuel(1);}
+    void init(bool cold){
+        fuelMassDelta.clear();isIdleCutoff=cold;crossfeed_=false;
+        valve_[0]=valve_[1]=true;
+        for(auto& tank:tanks_)if(tank.currentFuel>0)fuelMassDelta.push_back(tank.currentFuel);
+        refresh();
+    }
 public:
-	bool isFuelFlow = false;
-	std::vector<double> fuelMassDelta{};
-
-	FuelSystem(EFMData& ptr_EFMdata)
-		: p_EFMdata(&ptr_EFMdata) 
-		{}
-	~FuelSystem() {}
-
-	void initCold()
-	{
-		isIdleCutoff = true;
-		isFuelFlow = false;
-		fuelMassDelta.push_back(MainTank.currentFuel);
-		fuelMassDelta.push_back(AftTank.currentFuel);
-	}
-	void initHot()
-	{
-		isIdleCutoff = false;
-		isFuelFlow = true;
-		fuelMassDelta.push_back(MainTank.currentFuel);
-		fuelMassDelta.push_back(AftTank.currentFuel);
-	}
-
-
-	// is low fuel indication
-	bool isLowFuel() const
-	{
-		return getInternalFuel() <= fuelCautionAmt;		
-	}
-
-	// called on initialization and on refueling
-	void setInternalFuel(const double fuel_kg) // <- in kg
-	{
-		MainTank.currentFuel = 0;
-		AftTank.currentFuel = 0;
-		refuelAdd(fuel_kg);
-	}
-
-	void setExternalFuel(int station, double fuel, double x, double y, double z)
-	{
-		if (station == 2)
-		{
-			if (fuel < AftTank.currentFuel)
-			{
-				fuelMassDelta.push_back(-(AftTank.currentFuel - fuel));
-			}
-			AftTank.currentFuel = fuel;
-		}
-	}
-
-	// total internal fuel in kg
-	double getInternalFuel() const
-	{
-		return MainTank.currentFuel;
-	}
-
-	// total external fuel in kg
-	double getExternalFuel() const
-	{
-		return AftTank.currentFuel;
-	}
-
-	void refuelAdd(const double fuel_kg) // <- in kg
-	{	// distribute fuel to each tank
-		double addition = fuel_kg;
-		addition = MainTank.addFuel(addition);
-		//addition = AftTank.addFuel(addition);
-	}
-
-	void setThrottle(float value)
-	{		
-		isIdleCutoff = value < -0.2;
-	}
-
-	void setUnlimitedFuel(bool status)
-	{
-		isUnlimitedFuel = status;
-	}
-
-	void transferFuel()
-	{
-		double transferAmt = Fuel_transferRate_kgs * p_EFMdata->deltaTime;
-		if (AftTank.currentFuel > transferAmt)
-		{
-			double excessFuel = MainTank.addFuel(transferAmt);
-			AftTank.decFuel(transferAmt);// - excessFuel); in the AH6, if the main tank if full, extra fuel from the aux transfer is vented overboard
-		}		
-	}
-
-	void setCommand(int command, const float value)
-	{
-		switch (command)
-		{
-			case (int)device_commands::AuxHandle:
-				auxValvePos = value;
-				break;
-			case (int)device_commands::FuelShutoffSw:
-				shutoffValveOpen = value == 0;
-				break;
-		}
-	}
-
-
-	void update(const double FF_kgHr, const double dt)
-	{
-		double fuelFlow_KgS = FF_kgHr / 3600.0;//fuel flow [Kg/s]
-		double fuelBurnPerFrame_kg = fuelFlow_KgS * dt;
-		if (isUnlimitedFuel == true)
-		{
-			fuelBurnPerFrame_kg = 0.0;
-		}
-
-		fuelMassDelta.push_back(-fuelBurnPerFrame_kg);
-
-		if (auxValvePos > 0)
-		{
-			transferFuel();
-		}
-		//fuelBurnPerFrame_kg = AuxTank.decFuel(fuelBurnPerFrame_kg);
-		fuelBurnPerFrame_kg = MainTank.decFuel(fuelBurnPerFrame_kg);
-
-		if (getInternalFuel() > 0 && !isIdleCutoff && shutoffValveOpen)
-		{
-			isFuelFlow = true;
-		}
-		else
-		{
-			isFuelFlow = false;
-		}
-
-		G_Params.cautionLight[CL_FuelLow] = isLowFuel();
-
-		cockpitAPI.setParamNumber(AftFuelTank_lb, AftTank.currentFuel * Convert::kg_to_lb);
-		cockpitAPI.setParamNumber(MainFuelTank_lb, MainTank.currentFuel * Convert::kg_to_lb);
-	}
-
+    bool isFuelFlow=false;
+    std::vector<double> fuelMassDelta;
+    void initCold(){init(true);} void initHot(){init(false);}
+    double tankFuel(int i)const{return i>=0&&i<2?tanks_[i].currentFuel:0;}
+    bool valveOpen(int i)const{return i>=0&&i<2&&valve_[i];}
+    bool crossfeedOpen()const{return crossfeed_;}
+    bool hasEngineFuel(int i)const{
+        return valveOpen(i)&&!isIdleCutoff&&(tankFuel(i)>0||(crossfeed_&&getInternalFuel()>0));
+    }
+    void setEngineValve(int i,bool open){if(i>=0&&i<2)valve_[i]=open;refresh();}
+    void setCrossfeed(bool open){crossfeed_=open;refresh();}
+    // 1997 H-46D quantity warning: about 25 percent. An approximation to the
+    // level switch, not attitude-dependent sensing or verified Vietnam wiring.
+    bool tankLow(int i)const{return tankFuel(i)<=.25*CH46::fuelReservoirCapacityKg;}
+    bool isLowFuel()const{return tankLow(0)||tankLow(1);}
+    double getInternalFuel()const{return tanks_[0].currentFuel+tanks_[1].currentFuel;}
+    void setInternalFuel(double kg){
+        if(!std::isfinite(kg)||kg<0)return;
+        const double total=std::min(kg,CH46::internalFuelCapacityKg);
+        tanks_[0].currentFuel=tanks_[1].currentFuel=.5*total;refresh();
+    }
+    void refuelAdd(double kg){
+        if(!std::isfinite(kg)||kg<=0)return;
+        const double before=getInternalFuel();
+        // Equal delivery where both cells have room; remaining accepted fuel
+        // goes to whichever cell has space. No transfer between cells occurs.
+        double left=tanks_[0].addFuel(.5*kg),right=tanks_[1].addFuel(.5*kg);
+        if(left>0)tanks_[1].addFuel(left);
+        if(right>0)tanks_[0].addFuel(right);
+        const double accepted=getInternalFuel()-before;
+        if(accepted>0)fuelMassDelta.push_back(accepted);refresh();
+    }
+    void setThrottle(float value){if(std::isfinite(value))isIdleCutoff=value<-.2;refresh();}
+    void setUnlimitedFuel(bool on){isUnlimitedFuel=on;}
+    void update(double ff1,double ff2,double dt){
+        if(!std::isfinite(dt)||dt<0)return;
+        const double before=getInternalFuel();
+        double demand[2]{ff1,ff2},unmet[2]{0,0};
+        for(int i=0;i<2;++i){
+            const double amount=!isUnlimitedFuel&&hasEngineFuel(i)&&std::isfinite(demand[i])?
+                std::max(0.0,demand[i])*dt/3600:0;
+            unmet[i]=tanks_[i].decFuel(amount);
+        }
+        // Idealized crossfeed: each engine uses its own cell first; an open
+        // crossfeed permits unmet demand from the other cell. Hydraulic flow
+        // sharing, boost-pump switches and altitude effects remain unmodeled.
+        if(crossfeed_){tanks_[1].decFuel(unmet[0]);tanks_[0].decFuel(unmet[1]);}
+        const double burn=before-getInternalFuel();
+        if(burn>0)fuelMassDelta.push_back(-burn);
+        refresh();G_Params.cautionLight[CL_FuelLow]=isLowFuel();
+    }
+    void update(double totalFF,double dt){update(.5*totalFF,.5*totalFF,dt);}
 };

@@ -1,0 +1,26 @@
+{
+  "source_parity": "PASS normalized text against existing 0.1.12C package",
+  "source_files": 39,
+  "retained_dll_hash": "PASS unchanged 0.1.12C",
+  "project_xml": "PASS",
+  "livery_local_bindings": 144,
+  "tests": [
+    {
+      "test": "rotor_droop_arg_0112c",
+      "status": "PASS",
+      "output": ""
+    },
+    {
+      "test": "governor_0112b",
+      "status": "PASS",
+      "output": "PASS governor removes steady hover overspeed and remains bounded after a collective step"
+    },
+    {
+      "test": "tandem_tests",
+      "status": "PASS",
+      "output": "PASS density units\nPASS wind/body axes\nPASS clutch cannot create positive torque from a negative input\nPASS forward cyclic mixes differential collective\nPASS pedal mixes opposing lateral cyclic\nPASS aggregate power ceiling\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=92425 front=46543.5 aft=46543.6 roll=-975.496 yaw=123.647 pitch=-5634.61 side=-0.28739 load=33211.6\nsample c=0.4 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=30221.9 front=15219.2 aft=15219.2 roll=-299.134 yaw=35.8363 pitch=-1843.14 side=-0.0150708 load=10184\nsample c=0.7 p=0 r=0 y=0 rho=0.8 dt=0.003 lift=60565 front=30499.4 aft=30499.5 roll=-640.124 yaw=80.9116 pitch=-3693.15 side=-0.181132 load=21793.3\nPASS both rotors generate upward thrust\nPASS collective increases lift and shaft demand\nPASS reduced density reduces fixed-RPM lift\nsample c=0.7 p=0.25 r=0 y=0 rho=1.225 dt=0.003 lift=92478.7 front=42626 aft=50494.9 roll=-375.001 yaw=5215.76 pitch=-45812.1 side=0.0213868 load=33324.7\nsample c=0.7 p=-0.25 r=0 y=0 rho=1.225 dt=0.003 lift=92438.3 front=50494.8 aft=42626.1 roll=-1582.63 yaw=-4967.5 pitch=34538.8 side=-0.602457 load=33324.7\nPASS forward cyclic produces nose-down moment\nPASS aft cyclic produces nose-up moment\nsample c=0.7 p=0 r=0.25 y=0 rho=1.225 dt=0.003 lift=92418.9 front=46539.7 aft=46539.7 roll=7521.64 yaw=-740.575 pitch=-5640.58 side=2268.73 load=33211.8\nsample c=0.7 p=0 r=-0.25 y=0 rho=1.225 dt=0.003 lift=92415.8 front=46539.6 aft=46539.8 roll=-9472.59 yaw=988.146 pitch=-5627.43 side=-2269.3 load=33211.3\nPASS lateral cyclic rolls and translates in requested direction\nsample c=0.7 p=0 r=0 y=0.25 rho=1.225 dt=0.003 lift=92418.8 front=46542.5 aft=46542.6 roll=-179.131 yaw=5957.15 pitch=-5780.9 side=-0.286195 load=33211\nsample c=0.7 p=0 r=0 y=-0.25 rho=1.225 dt=0.003 lift=92427.4 front=46542.6 aft=46542.7 roll=-1771.85 yaw=-5709.79 pitch=-5488.02 side=-0.288076 load=33212.2\nPASS pedals yaw in requested direction (DCS +Y is nose-left)\nPASS pedals primarily create a yaw couple rather than side thrust\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.006 lift=92425 front=46543.5 aft=46543.6 roll=-975.522 yaw=123.933 pitch=-5635.14 side=-0.297297 load=33211.6\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.0015 lift=92425 front=46543.5 aft=46543.6 roll=-975.483 yaw=123.483 pitch=-5634.36 side=-0.281676 load=33211.6\nPASS fixed-state lift converges across 6, 3, and 1.5 ms steps\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=92425 front=46543.5 aft=46543.6 roll=-975.496 yaw=123.36 pitch=-98059.6 side=-0.28739 load=33211.6\nPASS CG shift changes moment arm without shifting model force positions\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=113935 front=54581.1 aft=58555.4 roll=-2194.78 yaw=-10184.3 pitch=26486 side=-109.507 load=17716.7\nsample c=0.3 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=23274.4 front=11825.1 aft=11612.8 roll=-152.721 yaw=-402.886 pitch=-209.261 side=27.6488 load=6870.08\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=102810 front=51759.1 aft=51759.3 roll=-10233.6 yaw=1066.35 pitch=-6396.56 side=-2472.33 load=32005.1\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=125524 front=46543.5 aft=46543.6 roll=-975.531 yaw=123.653 pitch=59566.3 side=-0.28739 load=33211.6\nPASS finite forward-flight, descent, crosswind, and ground-effect forces\nsample c=0.7 p=0 r=0 y=0 rho=1.225 dt=0.003 lift=93233.4 front=47264.4 aft=47264.5 roll=-990.649 yaw=125.193 pitch=-5706.96 side=-0.278705 load=33728.1\nPASS engine and rotor coupling produces finite lift\nAll checks passed. These are code checks, not flight-performance validation."
+    }
+  ],
+  "windows_x64_build": "PASS (Zig 0.13.0)",
+  "runtime": "NOT EXERCISED"
+}
