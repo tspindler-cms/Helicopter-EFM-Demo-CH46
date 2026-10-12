@@ -3,6 +3,11 @@ local function counter()
 	return count
 end
 
+local function counterAt(n)
+	count = n
+	return count
+end
+
 count = 10000
 
 Keys =
@@ -146,7 +151,21 @@ device_commands = { -- commands for lua
 	P_ICS_Function = counter(),
 	P_ICS_Mode = counter(),
 
-	ARC186_10MHz = counter(),
+	-- Commands sent straight to the EFM (ed_fm_set_command). Numbers are fixed
+	-- because Input/*.lua and CH46_TestSystems.lua reference them literally.
+	-- 3110-3129 is reserved for this block (3122-3124 are used by the test panel).
+	Eng1FuelValveOpen	= 3110,
+	Eng1FuelValveClose	= 3111,
+	Eng2FuelValveOpen	= 3112,
+	Eng2FuelValveClose	= 3113,
+	Eng1Starter			= 3114,
+	Eng2Starter			= 3115,
+	FuelCrossfeedOpen	= 3116,
+	FuelCrossfeedClose	= 3117,
+	RotorGroupDamageFwd	= 3120,
+	RotorGroupDamageAft	= 3121,
+
+	ARC186_10MHz = counterAt(3130),
 	ARC186_1MHz = counter(),
 	ARC186_tenthMHz = counter(),
 	ARC186_quartMHz = counter(),
@@ -156,17 +175,6 @@ device_commands = { -- commands for lua
 	ARC186_chan = counter(),
 	ARC186_load = counter(),
 	ARC186_SquelchToneSw = counter(),
-
-	Eng1FuelValveOpen = counter(),
-	Eng1FuelValveClose = counter(),
-	Eng2FuelValveOpen = counter(),
-	Eng2FuelValveClose = counter(),
-	Eng1Starter = counter(),
-	Eng2Starter = counter(),
-	FuelCrossfeedOpen = counter(),
-	FuelCrossfeedClose = counter(),
-	RotorGroupDamageFwd = counter(),
-	RotorGroupDamageAft = counter(),
 
 
 }
