@@ -1,0 +1,35 @@
+CH-46D - EIGHT SELECTABLE LIVERIES - 11 OCTOBER 2026
+
+REQUIRES the compatible VWV CH-46D aircraft mod and its flyable extension.
+This is a texture add-on, not a standalone flyable aircraft.
+
+INSTALL
+Copy the included Liveries folder into your actual Saved Games/DCS user folder.
+Two aircraft folders are included: vwv_ch46d_flyable and vwv_ch46d_late_flyable.
+Keep CH46_20261011_Shared beside the eight named livery folders in each type.
+In Mission Editor select the flyable CH-46D, open its Paint Scheme/Livery selector,
+and choose the desired named scheme ending in 2026-10-11. Save and launch the mission.
+Other players must install the same pack to see these liveries on your aircraft.
+Existing default liveries remain available. No mod entry.lua patch is required
+for standard Saved Games livery installation. No animation arguments are forced.
+
+REMOVE / CHANGE
+Remove only the CH46_20261011_* folders from the two aircraft livery directories.
+Do not remove the shared folder while keeping any of these eight liveries.
+To use another scheme, change the mission Paint Scheme selection.
+
+CONTENT
+The same saved exterior colors, DirectX normals, shared RoughMet, interior and panel
+maps used for the eight model previews, converted to BC7 DDS with full mip chains.
+Original resolution is retained; no upscaling, repainting or new wear was applied.
+RoughMet channels: R ambient occlusion, G roughness, B metalness.
+Glass, dynamic number materials and other unmapped materials retain base-mod values.
+Numbers already painted into these colors remain baked in; dynamic-number blanks
+are not part of this package. Not all included liveries depict the Vietnam era.
+
+VALIDATION / RELEASE GATE
+DDS headers, sizes, mip chains and all local texture references checked offline.
+DCS livery selection, appearance and flight test NOT EXERCISED.
+The compatible complete CH-46 base installation is currently missing from the
+available DCS user profile. Shared as a test candidate at the user's request; runtime acceptance remains pending.
+No flight-model DLL, cockpit scripts, model, UVs or existing source textures changed.

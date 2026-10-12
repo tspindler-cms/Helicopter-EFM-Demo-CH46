@@ -5,7 +5,12 @@
 class FlightControls
 {
 private:
-	
+    // CTRL-01 (0.1.4): keep physical pedals separate from keyboard yaw.
+    // Releasing a yaw key removes only the keyboard contribution, so a
+    // currently held physical pedal is neither latched nor silently centered.
+    double pedalAxis = 0.0;
+    double keyboardPedal = 0.0;
+    void updatePedal() { PedalInput = limit(pedalAxis + keyboardPedal, -1.0, 1.0); }
 public:
 	FlightControls() {}
 	~FlightControls() {}
@@ -37,29 +42,36 @@ public:
 		RollInput = 0.0;
 		rollTrim = 0.0;
 		pitchTrim = 0.0;
+		pedalAxis = keyboardPedal = 0.0;
+        // CTRL-02: reset cached outputs immediately, not on a later sim tick.
+        pitchOutput = rollOutput = 0.0;
 	}
 
 	void release()
 	{
-		CollectiveInput = 0.0;
-		PedalInput = 0.0;
-		PitchInput = 0.0;
-		RollInput = 0.0;
-		rollTrim = 0.0;
-		pitchTrim = 0.0;
+        init(); // CTRL-02: one complete reset for release and direct initialization.
 	}
+
+    void setPedalAxis(double value) {
+        pedalAxis = limit(value, -1.0, 1.0);
+        updatePedal();
+    }
 
 	void setPedLeft()
 	{
-		PedalInput = limit(PedalInput + 0.008, -1.0, 1.0);
+        keyboardPedal = limit(keyboardPedal + 0.008, -1.0, 1.0);
+        updatePedal();
 	}
 	void setPedRight()
 	{
-		PedalInput = limit(PedalInput - 0.008, -1.0, 1.0);
+        keyboardPedal = limit(keyboardPedal - 0.008, -1.0, 1.0);
+        updatePedal();
 	}
 	void setPedStop()
 	{
-		PedalInput = limit(PedalInput, -0.5, 0.5);
+        // CTRL-01: key-up used to retain up to +/-0.5 pedal indefinitely.
+        keyboardPedal = 0.0;
+        updatePedal();
 	}
 	void setCollUp()
 	{

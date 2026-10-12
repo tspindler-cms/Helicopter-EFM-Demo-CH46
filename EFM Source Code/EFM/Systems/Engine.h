@@ -1,5 +1,5 @@
 #pragma once
-#include "../FlightModel/aero.h"
+#include "../FlightModel/Aero.h"
 
 
 // N1 gas producer rpm will be main measure of engine power
@@ -17,12 +17,17 @@ static double _N1percent[_N1_Points] = { 0.0, 20.0,  62.0,  80.0,  95.0,  98.0, 
 // new array for CH-46D
 // static double _HP_data[_N1_Points] =   { 0.0,  0.0,  45.0, 135.0, 312.0, 370.0,  400.0,  425.0, 575.0};
 // static double _HP_data[_N1_Points] =   { 0.0, 0.0, 420.0, 1150.0, 2200.0, 2550.0, 2800.0, 2950.0, 3200.0};
-static double _HP_data[_N1_Points] =   { 0.0, 0.0, 840.0, 2300.0, 4400.0, 5100.0, 5600.0, 5900.0, 6400.0};
+// Provisional AGGREGATE map. Shape is inherited; only the 2 x 1400 shp
+// ceiling is source-backed. Independent T58s and transmission limits remain TODO.
+static double _HP_data[_N1_Points] =   { 0.0, 0.0, 420.0, 1150.0, 2200.0, 2550.0, 2800.0, 2800.0, 2800.0};
 
 class TurboshaftEngine
 {
 private:
 
+    // ENG-01: share=0.5 is one of two T58 states. The inherited map is still aggregate.
+    const double powerShare_;
+    const bool publishCockpit_;
     EFMData& p_EFMdata;
     FlightControls& p_flightControl;
 
@@ -47,12 +52,14 @@ private:
     void* ENGINE_TOT = cockpitAPI.getParamHandle("ENGINE_TOT"); // for use in digital VIDS gauge
 
     double TargetN2 = 98.0;// adjustable governor target to be used for collective switch
+    double governorTrimN1 = 0.0; // integral trim removes steady rotor-speed error
     double N1Cmd = 100.0;// target N1 before delta limit
     double N1rate = 15.0;
     double N1_PCT = 100.0;// current N1 speed [%] (gas producer speed)
     double fuelFlow = 0.0; // [lb/hr]
     double Torque_PSI = 0.0;
     double engTorque_ftlb = 0.0;
+    double availablePowerHP = 0.0; // PWR-01 aggregate power budget before clutch
     double oilPressure = 0.0; // [PSI]
     double oilTemp = 0.0; // [deg C]
     double TOTcmd = 15.0; // [deg C]
@@ -65,16 +72,19 @@ public:
     double throttleInput = 0.0;	// Throttle input command
     bool starterButtonOn = false;
 
-    TurboshaftEngine(EFMData& ptr_EFMdata, FlightControls& ptr_fltCntrl)
-        : p_EFMdata(ptr_EFMdata)
+    TurboshaftEngine(EFMData& ptr_EFMdata, FlightControls& ptr_fltCntrl,
+        double powerShare=1.0, bool publishCockpit=true)
+        : powerShare_(powerShare), publishCockpit_(publishCockpit), p_EFMdata(ptr_EFMdata)
         , p_flightControl(ptr_fltCntrl)
     {}
     ~TurboshaftEngine() {}
 
     void initCold()
     {
+        TOTrate = 10.0; addTemp = TOTwhenIgnited = 0.0; // RESET-03: complete thermal reset.
         engineState = ENG_Off;
         TargetN2 = 98.0;
+        governorTrimN1 = 0.0;
         throttleInput = 0;
         starterButtonOn = false;
         N1_PCT = 0.0;
@@ -83,6 +93,7 @@ public:
         fuelFlow = 0.0;
         Torque_PSI = 0.0;
         engTorque_ftlb = 0.0;
+        availablePowerHP = 0.0; // PWR-01 reset the budget together with torque
         oilTemp = 15.0;
         oilPressure = 0.0;
         TOTcmd = 15.0;
@@ -90,16 +101,19 @@ public:
     }
     void initHot()
     {
+        TOTrate = 10.0; addTemp = TOTwhenIgnited = 0.0; // RESET-03: no prior ignition history.
         engineState = ENG_Running;
         TargetN2 = 98.0;
+        governorTrimN1 = 0.0;
         throttleInput = 1;
         starterButtonOn = false;
         N1_PCT = 75.0;
         N1Cmd = 75.0;
         N1rate = 15.0;
         fuelFlow = 0.0;
-        Torque_PSI = 15.0;
-        engTorque_ftlb = 1400.0;
+        engTorque_ftlb = 1400.0 * powerShare_;
+        availablePowerHP = engTorque_ftlb * OmegaT / 550.0;
+        Torque_PSI = 59.0 * getTorqueRelative(); // GAUGE-01: same normalization before first tick.
         oilTemp = 50.0;
         oilPressure = 85.0;
         TOTcmd = 600.0;
@@ -136,12 +150,26 @@ public:
     }
     double getTorqueRelative()
     {
-        return Torque_PSI / 59.0;
+        // API-04 / GAUGE-01: torque / reference torque, not horsepower / 425.
+        // 100% is this model's aggregate 2,800 shp at nominal rotor speed;
+        // not a validated CH-46 transmission or time-limited torque gauge.
+        return engTorque_ftlb / (CH46::aggregatePowerHP * powerShare_ * 550.0 / OmegaT);
+    }
+    bool isStarterEngaged() const {
+        // DBG-12: existing starter logic, without inventing a torque model.
+        return starterButtonOn && (engineState==ENG_Motor || engineState==ENG_Ignition);
+    }
+    int stateForDebug() const { return static_cast<int>(engineState); }
+    // DBG-13: expose the existing governor target without changing its law.
+    double getGovernorTargetN2Pct() const {
+        return engineState==ENG_Running ? TargetN2+
+            LinInterp(p_flightControl.CollectiveInput,0.0,0.4,0.0,2.0) : 0.0;
     }
     double getFuelFlow()// [kg/hr]
     {
-        return fuelFlow * Convert::lb_to_kg;
+        return fuelFlow * Convert::lb_to_kg * powerShare_; // ENG-01: preserve aggregate consumption with both engines running.
     }
+    double getAvailablePowerHP() const { return availablePowerHP; }
     double getEngTorque()
     {
         return engTorque_ftlb;
@@ -158,6 +186,7 @@ public:
         {
         case ENG_Off:
         {
+            governorTrimN1 = 0.0;
             if (starterButtonOn && N1_PCT < ENG_RPM_SUSTAIN_PCT)//TODO add req. electric power
             {
                 engineState = ENG_Motor;
@@ -172,6 +201,7 @@ public:
         }
         case ENG_Motor: //engine turning due to electrical starter. No fuel or ignition
         {
+            governorTrimN1 = 0.0;
             if (starterButtonOn)
             {
                 N1Cmd = ENG_RPM_MOTOR_PCT;
@@ -198,6 +228,7 @@ public:
         }
         case ENG_Ignition://20-40 sec from 19 to 58
         {
+            governorTrimN1 = 0.0;
             if (starterButtonOn && hasFuel)
             {
                 N1Cmd = ENG_RPM_IDLE_PCT;
@@ -241,10 +272,28 @@ public:
             //An increase in collective from idle collective causes 1-1.5% increase N2
             double TargetN2Final = TargetN2 + LinInterp(p_flightControl.CollectiveInput, 0.0, 0.4, 0.0, 2.0);
             double N2error = TargetN2Final - currentN2;
-            N1Cmd = N1Target + 3.0 * N2error;
-            N1Cmd = limit(N1Cmd, ENG_RPM_IDLE_PCT, ENG_RPM_IDLE_PCT + throttleInput * (ENG_RPM_MAX_LIMIT_PCT - ENG_RPM_IDLE_PCT));
+            const double minN1 = ENG_RPM_IDLE_PCT;
+            const double maxN1 = ENG_RPM_IDLE_PCT + throttleInput * (ENG_RPM_MAX_LIMIT_PCT - ENG_RPM_IDLE_PCT);
+            const double proportionalCmd = N1Target + 3.0 * N2error;
 
-            N1rate = limit(abs(N1_PCT - N1Cmd) * 1.5, 0.25, 15);//non-linear change rate
+            // GOV-01: proportional control alone required a permanent N2 error
+            // (about +4.3% in the 0.1.12A hover trace). A slow, bounded trim
+            // recentres the governor without changing its immediate response.
+            if (std::isfinite(frameTime) && frameTime > 0.0 && std::isfinite(N2error))
+            {
+                const double candidateTrim = limit(governorTrimN1 + 0.35 * N2error * frameTime, -15.0, 15.0);
+                const double candidateCmd = proportionalCmd + candidateTrim;
+                if ((candidateCmd >= minN1 && candidateCmd <= maxN1) ||
+                    (candidateCmd > maxN1 && N2error < 0.0) ||
+                    (candidateCmd < minN1 && N2error > 0.0))
+                {
+                    governorTrimN1 = candidateTrim;
+                }
+            }
+
+            N1Cmd = limit(proportionalCmd + governorTrimN1, minN1, maxN1);
+
+            N1rate = limit(std::abs(N1_PCT - N1Cmd) * 1.5, 0.25, 15);//non-linear change rate
              //-----------------------------------------------------------------------------------
 
             // the manual only lists 78lb/h at 65% and 138lb/hr at 79%. max FF is 300lb/hr
@@ -259,27 +308,38 @@ public:
 
 
         N1Cmd = limit(N1Cmd, 0.0, ENG_RPM_MAX_LIMIT_PCT);
-        N1_PCT = deltaLimit(N1_PCT, N1Cmd, N1rate);
+        N1_PCT = deltaLimit(N1_PCT, N1Cmd, N1rate, frameTime);
 
-        double EnginePower_HP = fn_engHP.interpnf1(N1_PCT);// engine horsepower
+        double EnginePower_HP = powerShare_ * limit(fn_engHP.interpnf1(N1_PCT), 0.0, CH46::aggregatePowerHP);
+        if (engineState != ENG_Running) EnginePower_HP = 0.0;
         //EnginePower_HP -= engAntiIceO-n ? 15.0 : 0.0;//15 SHP loss from anti ice on
-        engTorque_ftlb = EnginePower_HP * 550.0 / OmegaT;//engine torque conversion for HP, [lb-ft]
+        // PWR-01: use actual turbine speed with a finite nominal torque cap.
+        // Aero repeats the budget calculation each rotor substep so a speed
+        // rise within a host frame cannot keep the old excessive torque.
+        availablePowerHP = EnginePower_HP;
+        engTorque_ftlb = CH46::powerLimitedTorque(availablePowerHP,
+            OmegaT*currentN2/100.0,OmegaT);
         
         //conversion for torque[lb-ft] to pressure[psi] based on chapter 7 in manual, says 500shp=70psi & 575=80.9psi. 500hp=5529ftlb; 575hp=6358ftlb <- what page??
-        Torque_PSI = EnginePower_HP * (59.0 / 425.0);// conversion from fig.7-33 (pg.7-19)
-        cockpitAPI.setParamNumber(ENGINE_TRQ, Torque_PSI);
+        // GAUGE-01: preserve the inherited dial's 0..59 scale, but drive it
+        // from model-relative torque. These are compatibility dial units,
+        // not sourced CH-46 torque-pressure units. The old 425-hp divisor
+        // made full CH-46 power display 6.59 times full scale and corrupted
+        // the inherited temperature lookup. Temperature calibration is still provisional.
+        Torque_PSI = 59.0 * getTorqueRelative();
+        if (publishCockpit_) cockpitAPI.setParamNumber(ENGINE_TRQ, Torque_PSI);
 
 
-        cockpitAPI.setCockpitDrawArg(INT_N1rpmNeedle, (float)(N1_PCT / 100));
+        if (publishCockpit_) cockpitAPI.setCockpitDrawArg(INT_N1rpmNeedle, (float)(N1_PCT / 100));
         double intPart;
         double fractPart = modf(N1_PCT / 10.0, &intPart);
-        cockpitAPI.setCockpitDrawArg(INT_N1rpmNeedleSmall, (float)fractPart);
+        if (publishCockpit_) cockpitAPI.setCockpitDrawArg(INT_N1rpmNeedleSmall, (float)fractPart);
 
-        updateEngineOil();
-        turbineOutletTemp = deltaLimit(turbineOutletTemp, TOTcmd, TOTrate);
-        cockpitAPI.setParamNumber(ENGINE_TOT, turbineOutletTemp);
+        updateEngineOil(frameTime);
+        turbineOutletTemp = deltaLimit(turbineOutletTemp, TOTcmd, TOTrate, frameTime);
+        if (publishCockpit_) cockpitAPI.setParamNumber(ENGINE_TOT, turbineOutletTemp);
 
-        G_Params.cautionLight[CL_EngOut] = engineState == ENG_Off;
+        if (publishCockpit_) G_Params.cautionLight[CL_EngOut] = engineState == ENG_Off;
     }
 
     void updateTOT()
@@ -302,7 +362,7 @@ public:
         }
     }
 
-    void updateEngineOil()
+    void updateEngineOil(double frameTime)
     {
         //------- Oil temp ----------------------
         double engOilTempCmd_degC = 0.0;
@@ -311,8 +371,8 @@ public:
             engOilTempCmd_degC = LinInterp(N1_PCT, 20.0, ENG_RPM_MAX_LIMIT_PCT, 5.0, 80.0);
         }
         engOilTempCmd_degC += p_EFMdata.ambientTemp_C;
-        oilTemp = deltaLimit(oilTemp, engOilTempCmd_degC, 0.3);      
-        cockpitAPI.setCockpitDrawArg(INT_OilTempNeedle, (float)LinInterp(oilTemp, 15.0, 125.0, 0.0, 1.0));
+        oilTemp = deltaLimit(oilTemp, engOilTempCmd_degC, 0.3, frameTime);      
+        if (publishCockpit_) cockpitAPI.setCockpitDrawArg(INT_OilTempNeedle, (float)LinInterp(oilTemp, 15.0, 125.0, 0.0, 1.0));
 
         //------ Oil pressure ----------------------
         double engOilPress_tempBias = LinInterp(oilTemp, 5, 50, 1.5, 1.0);//make oil press higher when oil temp is cold
@@ -333,9 +393,8 @@ public:
         }
 
         engOilPressCmd_psi *= engOilPress_tempBias;
-        oilPressure = deltaLimit(oilPressure, engOilPressCmd_psi, 5.0);
-        cockpitAPI.setCockpitDrawArg(INT_OilPressNeedle, (float)(oilPressure / 200.0));
-        G_Params.cautionLight[CL_XmsnPress] = oilPressure < 15;
+        oilPressure = deltaLimit(oilPressure, engOilPressCmd_psi, 5.0, frameTime);
+        if (publishCockpit_) cockpitAPI.setCockpitDrawArg(INT_OilPressNeedle, (float)(oilPressure / 200.0));
+        if (publishCockpit_) G_Params.cautionLight[CL_XmsnPress] = oilPressure < 15;
     }
 };
-

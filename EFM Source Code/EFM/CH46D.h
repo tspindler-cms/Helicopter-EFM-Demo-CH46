@@ -3,7 +3,7 @@
 #include "stdafx.h"
 
 // ED's API
-#include "Include/Cockpit/CockpitAPI.h" // Provides param handle interfacing for use in lua
+#include "include/Cockpit/CockpitAPI.h" // Provides param handle interfacing for use in lua
 #include "include/FM/API_Declare.h"	// Provides all DCS related functions in this cpp file
 
 // Utility headers
@@ -15,7 +15,7 @@
 
 // Model headers
 #include "EFMData.h"				// store common info from DCS in one spot
-#include "Systems/Engine.h"			// Engine model functions
+#include "Systems/TwinEngine.h"			// Engine model functions
 #include "Systems/FuelSystem.h"		// Fuel and tank usage functions
 #include "Systems/Damage.h"			// damages model
 #include "Systems/ElectricSystem.h"	// Generators, battery etc.
@@ -33,7 +33,7 @@ AH6JDamage damageModel;
 ElectricSystem Electrics;
 FlightControls flightControls;
 LightSystem Lighting;
-TurboshaftEngine Engine(EFMdata, flightControls);
+TwinEngine Engine(EFMdata, flightControls);
 CH46DAero Aero(EFMdata, damageModel, flightControls);
 
 

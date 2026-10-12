@@ -28,6 +28,7 @@
     <ClInclude Include="include\UtilityFunctions.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="FlightModel\RotorKinematics.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="FlightModel\Aero.h">
       <Filter>FlightModel</Filter>
     </ClInclude>
