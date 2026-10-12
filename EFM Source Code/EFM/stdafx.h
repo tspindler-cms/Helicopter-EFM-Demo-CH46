@@ -6,7 +6,8 @@
 #pragma once
 
 // Including SDKDDKVer.h defines the highest available Windows platform.
-#include <SDKDDKVer.h>
+#ifndef CH46_HEADLESS_TEST
+#include <sdkddkver.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
@@ -14,6 +15,9 @@
 
 // Windows Header Files:
 #include <windows.h>
+#endif
+#include <algorithm>
+#include <memory>
 #include <cmath>
 #include <malloc.h>
 #include <memory.h>

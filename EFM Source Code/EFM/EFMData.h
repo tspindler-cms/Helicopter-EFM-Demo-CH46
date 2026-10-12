@@ -65,7 +65,7 @@ public:
 		speedOfSound = speedSound_mps;
 		speedOfSound_fts = speedSound_mps * Convert::meterToFoot;
 		rho = airDensity_kgm3;
-		rho_SlgFt3 = Convert::kgm3ToSlugFt3;
+		rho_SlgFt3 = airDensity_kgm3 * Convert::kgm3ToSlugFt3;
 		airPressure = airPressure_Nm2;
 	}
 
@@ -93,14 +93,14 @@ public:
 	{
 		// y and z axis corrected for normal aerodynamic usage
 		airspeed.x = vx - wind_vx;
-		airspeed.y = vy - wind_vz;
-		airspeed.z = -(vz - wind_vy);
+		airspeed.y = vz - wind_vz;
+		airspeed.z = -(vy - wind_vy);
 	}
 
 	void update(const double dt)
 	{
 		totalVelocity_MPS = sqrt(airspeed.x * airspeed.x + airspeed.y * airspeed.y + airspeed.z * airspeed.z);
-		mach = totalVelocity_MPS / speedOfSound;
+		mach = speedOfSound > 0.0 ? totalVelocity_MPS / speedOfSound : 0.0;
 		altitudeAGL = altitudeMSL - surfaceAlt;
 		altitudeAGL_ft = altitudeAGL * Convert::meterToFoot;
 

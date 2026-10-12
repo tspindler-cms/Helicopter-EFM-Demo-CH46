@@ -18,6 +18,21 @@
 // the Y and the Z and reverse the Y prior to output to DCS World
 //---------------------------------------------------------------------------
 #include "CH46D.h"
+#include "Systems/ThrottleControl.h"
+// CTRL-03/04: reset this input-router state in every DCS start callback.
+static ThrottleControl throttleControl;
+#include "DebugTelemetry.h"
+
+// CTRL-06: set draw arguments directly after accepted throttle commands.
+// The supplied Lua helper reads 154/155 for keyboard stepping; keeping them
+// current prevents a hardware-axis -> keyboard jump from stale lever values.
+// This does not dispatch a clickable action or feed input back into the EFM.
+static void syncThrottleArguments() {
+    static EDPARAM api;
+    api.setCockpitDrawArg(154,static_cast<float>(Engine.throttleInput));
+    api.setCockpitDrawArg(155,throttleControl.idleStopReleased()?1.0f:0.0f);
+}
+
 
 
 
@@ -87,7 +102,7 @@ void ed_fm_set_current_state(double ax,//linear acceleration component in world 
 							double quaternion_w //orientation quaternion components in world coordinate system
 )
 {
-
+    dbgClimb=vy; // DEBUG: actual world vertical velocity, not body-axis airspeed.
 }
 
 // Body axis
@@ -113,6 +128,15 @@ void ed_fm_set_current_state_body_axis(double ax,//linear acceleration component
 									double common_angle_of_slide   //AoS  (rad)
 )
 {
+    // DEBUG: preserve DCS signs explicitly; do not alter the rotor state mapping.
+    dbgRoll=roll*Convert::radToDeg; dbgPitch=pitch*Convert::radToDeg;
+    dbgP=omegax*Convert::radToDeg; dbgQ=omegaz*Convert::radToDeg; dbgR=omegay*Convert::radToDeg;
+    // DBG-01 (0.1.4): record actual DCS accelerations; previous replays had
+    // to estimate these from 10-Hz airspeed/rate samples. Preserve DCS axes.
+    dbgAx=ax; dbgAy=ay; dbgAz=az;
+    dbgPdot=omegadotx*Convert::radToDeg;
+    dbgQdot=omegadotz*Convert::radToDeg;
+    dbgRdot=omegadoty*Convert::radToDeg;
 	Aero.setBodyStates(ax, ay, az, vx, vy, vz, wind_vx, wind_vy, wind_vz, omegadotx, omegadoty, omegadotz, omegax, omegay, omegaz, yaw, pitch, roll);	
 	EFMdata.setCurrentBodyState(ax, ay, az, vx, vy, vz, wind_vx, wind_vy, wind_vz, omegadotx, omegadoty, omegadotz, omegax, omegay, omegaz, yaw, pitch, roll);
 }
@@ -128,11 +152,12 @@ void ed_fm_simulate(double dt)
 	EFMdata.update(dt);
 
 	flightControls.update();
-	Engine.update(dt, Fuel.isFuelFlow, Aero.getN2PCT());
-	Aero.update(Engine.getEngTorque());
-	Fuel.update(Engine.getFuelFlow(), dt); // note, still uses fuel when sim is paused
-	Electrics.update(dt, Engine.getN1RPM());
+	Engine.update(dt, Fuel.hasEngineFuel(0), Fuel.hasEngineFuel(1), Aero.getN2PCT());
+	Aero.update(Engine.getEngTorque(), Engine.getAvailablePowerHP()); // PWR-01
+	Fuel.update(Engine.unit(0).getFuelFlow(), Engine.unit(1).getFuelFlow(), dt); // FUEL-05 independent feeds
+	Electrics.update(dt, Engine.getGeneratorDriveN1()); // Existing single electrical network; either engine can drive it.
 	Lighting.updateFrame();
+    publishDebug(dt); // DEBUG only: before exported force queues are consumed.
 
 }
 
@@ -200,6 +225,13 @@ bool ed_fm_change_mass(double& delta_mass,
 		double Fd = Fuel.fuelMassDelta.back();
 		Fuel.fuelMassDelta.pop_back();
 		delta_mass = Fd;
+        // MASS-01 (0.1.4): initialize every successful callback output.
+        // Current prototype tanks are at model origin with no distributed
+        // tank inertia model. Explicit zeros retain that approximation;
+        // these are not researched CH-46D tank positions/inertias.
+        delta_mass_pos_x = delta_mass_pos_y = delta_mass_pos_z = 0.0;
+        delta_mass_moment_of_inertia_x = delta_mass_moment_of_inertia_y =
+            delta_mass_moment_of_inertia_z = 0.0;
 		return true;
 	}
 	return false;
@@ -212,29 +244,42 @@ bool ed_fm_change_mass(double& delta_mass,
 // These 3 functions called at beginning of every mission, use to initialize systems
 void ed_fm_cold_start()
 {
+    flightControls.init(); // RESET-01: clear axes, trim and held keyboard state for this mission.
+    throttleControl.reset(true);
 	Engine.initCold();
 	Fuel.initCold();
+    throttleControl.clickable(-1.0,Engine,Fuel); // CTRL-04 cold start at fuel cutoff.
+    syncThrottleArguments();
 	Electrics.initCold();
 	damageModel.init();
 	Aero.InitializeOff();
+    beginDebugRun(); // DBG-02: label each start without changing EFM physics time.
 }
 
 void ed_fm_hot_start()
 {
+    flightControls.init(); // RESET-01: do not inherit the last mission's controls or trim.
+    throttleControl.reset(false);
 	Engine.initHot();
 	Fuel.initHot();
+    syncThrottleArguments();
 	Electrics.initHot();
 	damageModel.init();
 	Aero.InitializeOn();
+    beginDebugRun();
 }
 
 void ed_fm_hot_start_in_air()
 {
+    flightControls.init(); // RESET-01: same complete control reset for every start type.
+    throttleControl.reset(false);
 	Engine.initHot();
 	Fuel.initHot();
+    syncThrottleArguments();
 	Electrics.initHot();
 	damageModel.init();
 	Aero.InitializeOn();
+    beginDebugRun();
 }
 
 //	set internal fuel volume, called on initialization, 
@@ -297,10 +342,15 @@ bool ed_fm_make_balance(double& ax,//linear acceleration component in world coor
 // Command = Command Index (See Cockpit\Scripts\command_defs.lua), Value = Signal Value (-1 to 1 for Joystick Axis)
 void ed_fm_set_command(int command, float value)
 {
+    // CTRL-03/04: reject nonfinite throttle signals before the clickable
+    // device decoder; infinity cannot safely be converted to a device ID.
+    if ((command == throttleAxis || command == throttle || command == throttleIdleCutoff)
+        && !std::isfinite(value)) return;
 	float device_id = 0; // See Cockpit\Scripts\devices.lua
 	if (value > 1.0) // if the command comes from clickabledata.lua it adds the device id to the value and changes the value
 	{
-		float normalized = modf(value, &device_id);
+        // BUILD-01: select the standard float overload on Linux and Windows.
+		float normalized = std::modf(value, &device_id);
 		value = normalized * 8.f - 2.f;
 	}
 
@@ -327,7 +377,7 @@ void ed_fm_set_command(int command, float value)
 		break;
 
 	case JoystickYaw:
-		flightControls.PedalInput = limit(-value, -1.0, 1.0);
+        flightControls.setPedalAxis(-value); // CTRL-01: original axis sign retained.
 		break;
 
 	case JoystickThrottle:
@@ -335,10 +385,11 @@ void ed_fm_set_command(int command, float value)
 		break;
 
 	case trimUp:
-		flightControls.pitchTrim = limit(flightControls.pitchTrim + 0.0015, -1, 1);
+        // CTRL-05: negative mixer pitch means aft cyclic / nose-up.
+		flightControls.pitchTrim = limit(flightControls.pitchTrim - 0.0015, -1, 1);
 		break;
 	case trimDown:
-		flightControls.pitchTrim = limit(flightControls.pitchTrim - 0.0015, -1, 1);
+		flightControls.pitchTrim = limit(flightControls.pitchTrim + 0.0015, -1, 1);
 		break;
 	case trimLeft:
 		flightControls.rollTrim = limit(flightControls.rollTrim - 0.0015, -1, 1);
@@ -376,17 +427,34 @@ void ed_fm_set_command(int command, float value)
 		flightControls.setCyclicRight();
 		break;
 	
+    case 3120: damageModel.setRotorGroupElement(false,value); break;
+    case 3121: damageModel.setRotorGroupElement(true,value); break;
+    // SYS-01: unbound input commands; existing shared throttle/starter retained.
+    case 3110: if(value>0.5)Fuel.setEngineValve(0,true); break;
+    case 3111: if(value>0.5)Fuel.setEngineValve(0,false); break;
+    case 3112: if(value>0.5)Fuel.setEngineValve(1,true); break;
+    case 3113: if(value>0.5)Fuel.setEngineValve(1,false); break;
+    case 3114: Engine.setStarter(0,value>0.5); break;
+    case 3115: Engine.setStarter(1,value>0.5); break;
+    case 3116: if(value>0.5)Fuel.setCrossfeed(true); break;
+    case 3117: if(value>0.5)Fuel.setCrossfeed(false); break;
 	case starterButton:
 		Engine.starterButtonOn = value > 0.0;
 		break;
 	
 
+    case throttleIdleCutoff:
+        // CTRL-04: release the idle stop, not an immediate engine shutdown.
+        throttleControl.setIdleStopRelease(value);
+        syncThrottleArguments();
+        break;
 	case throttle:
-		Engine.throttleInput = value;
-		Fuel.setThrottle(value);
+        throttleControl.clickable(value,Engine,Fuel);
+        syncThrottleArguments();
 		break;
 	case throttleAxis:
-		//Engine.setThrottleInput((-value + 1.0) / 2.0);
+        throttleControl.axis(value,Engine,Fuel); // CTRL-03 activates command 3016.
+        syncThrottleArguments();
 		break;
 		
 	case batterySwitch:
@@ -427,6 +495,10 @@ void ed_fm_on_damage(int Element, double element_integrity_factor)
 {
 	// keep integrity information in airframe
 	damageModel.onAirframeDamage(Element, element_integrity_factor);
+    // DBG-03: record the received notification even if immortality ignores it.
+    // A notification is not proof of contact or of damage applied to a rotor.
+    ++dbgDamageCount; dbgDamageElement=Element;
+    dbgDamageFactor=element_integrity_factor; dbgDamageTime=EFMdata.time;
 }
 
 // called in case of repair routine 
@@ -442,21 +514,25 @@ void ed_fm_repair()
 // external model draw arguments.  size: count of elements in array
 void ed_fm_set_draw_args_v2(float* drawargs, size_t size)
 {
-	drawargs[EXT_TRcollective] = (float)-flightControls.PedalInput;
-	drawargs[EXT_Collective] = (float)flightControls.CollectiveInput;
-	drawargs[EXT_CyclicRoll] = (float)flightControls.rollOutput;
-	drawargs[EXT_CyclicPitch] = (float)flightControls.pitchOutput;
+    // DRAW-01: DCS supplies an element count; only write available arguments.
+    if(!drawargs)return;
+	if(static_cast<size_t>(EXT_TRcollective)<size) drawargs[EXT_TRcollective] = (float)-flightControls.PedalInput;
+	if(static_cast<size_t>(EXT_Collective)<size) drawargs[EXT_Collective] = (float)flightControls.CollectiveInput;
+	if(static_cast<size_t>(EXT_CyclicRoll)<size) drawargs[EXT_CyclicRoll] = (float)flightControls.rollOutput;
+	if(static_cast<size_t>(EXT_CyclicPitch)<size) drawargs[EXT_CyclicPitch] = (float)flightControls.pitchOutput;
 	
 }
 
 // cockpit draw arguments
 void ed_fm_set_fc3_cockpit_draw_args_v2(float * drawargs,size_t size)
 {
-	drawargs[INT_StickPitch] = (float)flightControls.pitchOutput;
-	drawargs[INT_StickRoll] = (float)flightControls.rollOutput;
-	drawargs[INT_Collective] = (float)flightControls.CollectiveInput;
-	drawargs[INT_Pedals] = (float)-flightControls.PedalInput;
-	drawargs[INT_OATNeedle] = (float) limit(EFMdata.ambientTemp_C /60 , 0, 1.0);
+    // DRAW-01: DCS supplies an element count; only write available arguments.
+    if(!drawargs)return;
+	if(static_cast<size_t>(INT_StickPitch)<size) drawargs[INT_StickPitch] = (float)flightControls.pitchOutput;
+	if(static_cast<size_t>(INT_StickRoll)<size) drawargs[INT_StickRoll] = (float)flightControls.rollOutput;
+	if(static_cast<size_t>(INT_Collective)<size) drawargs[INT_Collective] = (float)flightControls.CollectiveInput;
+	if(static_cast<size_t>(INT_Pedals)<size) drawargs[INT_Pedals] = (float)-flightControls.PedalInput;
+	if(static_cast<size_t>(INT_OATNeedle)<size) drawargs[INT_OATNeedle] = (float) limit(EFMdata.ambientTemp_C /60 , 0, 1.0);
 	
 }
 
@@ -493,7 +569,9 @@ double ed_fm_get_param(unsigned param_enum)
 		return 1;
 
 	case ED_FM_PROPELLER_1_RPM:	// this is neccesary for rotor sound, rpm should match definition in AH-6.lua tail_rotor_RPM
-		return Aero.getTRomega() * Convert::radSecToRPM;
+		// API-03: the aft lifting rotor counter-rotates, but RPM is a speed
+        // magnitude. Direction remains in rotor physics and draw animation.
+		return std::abs(Aero.getTRomega()) * Convert::radSecToRPM;
 	case ED_FM_PROPELLER_1_PITCH:  // propeller blade pitch
 
 	case ED_FM_PROPELLER_1_TILT:   // for helicopter
@@ -502,28 +580,38 @@ double ed_fm_get_param(unsigned param_enum)
 		return 1;
 
 	case ED_FM_ENGINE_1_RPM:
-		return Aero.getN2omega() * 6016.0;
+    case ED_FM_ENGINE_2_RPM:
+        // API-02: the solver's N2 shaft is referred to rotor speed. Convert
+        // its dimensionless ratio to engine output RPM, not rad/s * RPM.
+		return Aero.getN2PCT() * .01 * CH46::engineOutputReferenceRPM;
 	case ED_FM_ENGINE_1_RELATED_RPM:
-		return Aero.getN2omega();	
-	case ED_FM_ENGINE_1_CORE_RPM:
-		return Engine.getN1RPM() * 6016.0;
-	case ED_FM_ENGINE_1_CORE_RELATED_RPM:		// This is important to use for engine sounds, heatblur, and for other internal functions like a functioning RWR
-		return Engine.getN1RPM();
-
-	case ED_FM_ENGINE_1_TEMPERATURE:
-		return Engine.getTOT();
-	case ED_FM_ENGINE_1_OIL_PRESSURE:
-		return Engine.getOilPress_Pa();
-	case ED_FM_ENGINE_1_FUEL_FLOW:
-		return 0;//Helicopter::Engine.getFuelFlow();
-	case ED_FM_ENGINE_0_TORQUE:
-	case ED_FM_ENGINE_1_TORQUE:					// Engine torque, [N*m]
-		return Engine.getTorque_Nm();
-	case ED_FM_ENGINE_0_STARTER_RELATED_TORQUE:
+    case ED_FM_ENGINE_2_RELATED_RPM:
+		return Aero.getN2PCT() * .01;
+    // ENG-02: independent engine outputs; engine N2 above remains the
+    // common shaft approximation until two free turbines/clutches are modeled.
+    case ED_FM_ENGINE_1_CORE_RPM: return Engine.unit(0).getN1RPM() * CH46::engineCoreReferenceRPM;
+    case ED_FM_ENGINE_2_CORE_RPM: return Engine.unit(1).getN1RPM() * CH46::engineCoreReferenceRPM;
+    case ED_FM_ENGINE_1_CORE_RELATED_RPM: return Engine.unit(0).getN1RPM();
+    case ED_FM_ENGINE_2_CORE_RELATED_RPM: return Engine.unit(1).getN1RPM();
+    case ED_FM_ENGINE_1_TEMPERATURE: return Engine.unit(0).getTOT();
+    case ED_FM_ENGINE_2_TEMPERATURE: return Engine.unit(1).getTOT();
+    case ED_FM_ENGINE_1_OIL_PRESSURE: return Engine.unit(0).getOilPress_Pa();
+    case ED_FM_ENGINE_2_OIL_PRESSURE: return Engine.unit(1).getOilPress_Pa();
+    case ED_FM_ENGINE_1_FUEL_FLOW: return Engine.unit(0).getFuelFlow()/3600.0;
+    case ED_FM_ENGINE_2_FUEL_FLOW: return Engine.unit(1).getFuelFlow()/3600.0;
+    case ED_FM_ENGINE_1_TORQUE: return Engine.unit(0).getTorque_Nm()*(264.0/CH46::engineOutputReferenceRPM);
+    case ED_FM_ENGINE_2_TORQUE: return Engine.unit(1).getTorque_Nm()*(264.0/CH46::engineOutputReferenceRPM);
+    case ED_FM_ENGINE_1_RELATIVE_TORQUE: return Engine.unit(0).getTorqueRelative();
+    case ED_FM_ENGINE_2_RELATIVE_TORQUE: return Engine.unit(1).getTorqueRelative();
+    // No APU or physical starter-torque model exists in this prototype.
+    // Never alias these fields to running-engine torque. Unhandled APU
+    // fields also return zero through the existing default below.
+    case ED_FM_ENGINE_0_TORQUE:
+    case ED_FM_ENGINE_0_RELATIVE_TORQUE:
+    case ED_FM_ENGINE_0_STARTER_RELATED_TORQUE:
 	case ED_FM_ENGINE_1_STARTER_RELATED_TORQUE:
-	case ED_FM_ENGINE_0_RELATIVE_TORQUE:
-	case ED_FM_ENGINE_1_RELATIVE_TORQUE:		// Relative engine torque
-		return Engine.getTorqueRelative();
+    case ED_FM_ENGINE_2_STARTER_RELATED_TORQUE:
+        return 0.0;
 
 	case ED_FM_ENGINE_1_THRUST:
 	case ED_FM_ENGINE_1_RELATED_THRUST:
@@ -540,8 +628,6 @@ double ed_fm_get_param(unsigned param_enum)
 		return 0;
 
 	// Groups for fuel indicator
-	case ED_FM_FUEL_FUEL_TANK_GROUP_0_LEFT:			// Values from different group of tanks
-	case ED_FM_FUEL_FUEL_TANK_GROUP_0_RIGHT:
 	case ED_FM_FUEL_FUEL_TANK_GROUP_1_LEFT:
 	case ED_FM_FUEL_FUEL_TANK_GROUP_1_RIGHT:
 	case ED_FM_FUEL_FUEL_TANK_GROUP_2_LEFT:
@@ -556,6 +642,8 @@ double ed_fm_get_param(unsigned param_enum)
 	case ED_FM_FUEL_FUEL_TANK_GROUP_6_RIGHT:
 		return 0;
 
+    case ED_FM_FUEL_FUEL_TANK_GROUP_0_LEFT: return Fuel.tankFuel(0);
+    case ED_FM_FUEL_FUEL_TANK_GROUP_0_RIGHT: return Fuel.tankFuel(1);
 	case ED_FM_FUEL_INTERNAL_FUEL:
 	case ED_FM_FUEL_TOTAL_FUEL:
 		return Fuel.getInternalFuel();
@@ -669,4 +757,11 @@ void ed_fm_suspension_feedback(int idx,const ed_fm_suspension_info * info)
 bool ed_fm_LERX_vortex_update(unsigned idx, LERX_vortex& out)
 {
 	return false;
+}
+
+// DEBUG: SDK-native watch route works independently of the Lua helper.
+size_t ed_fm_debug_watch(int level, char* buffer, size_t maxlen) {
+    if (!buffer || maxlen==0) return 0;
+    const size_t n=std::strlen(dbgText)<maxlen-1?std::strlen(dbgText):maxlen-1;
+    std::memcpy(buffer,dbgText,n); buffer[n]='\0'; return n;
 }

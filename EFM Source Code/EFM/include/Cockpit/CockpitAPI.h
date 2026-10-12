@@ -1,5 +1,35 @@
 #pragma once
 
+#ifdef CH46_HEADLESS_TEST
+#ifdef CH46_CAPTURE_DRAW_TEST
+#include <map>
+inline std::map<int,float>& testCockpitDraws(){static std::map<int,float> values;return values;}
+#endif
+// Standalone physics tests only. Production builds still use DCS's real API.
+class EDPARAM
+{
+public:
+    void* getParamHandle(const char*) { return nullptr; }
+    void setParamNumber(void*, double) {}
+    // TEST-01: complete the no-cockpit stub for delivered callback tests.
+    double getParamNumber(void*) { return 0; }
+    void setParamString(void*, const char*) {}
+    void setCockpitDrawArg(int arg, float value) {
+#ifdef CH46_CAPTURE_DRAW_TEST
+        testCockpitDraws()[arg]=value;
+#endif
+    }
+    void setExternalDrawArg(int, float) {}
+    float getCockpitDrawArg(int arg) {
+#ifdef CH46_CAPTURE_DRAW_TEST
+        return testCockpitDraws()[arg];
+#else
+        return 0;
+#endif
+    }
+    float getExternalDrawArg(int) { return 0; }
+};
+#else
 #include "ccParametersAPI.h"
 
 
@@ -67,3 +97,4 @@ public:
 	}
 
 };
+#endif

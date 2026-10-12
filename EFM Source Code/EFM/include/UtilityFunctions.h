@@ -31,18 +31,18 @@ inline double limit(double input, double lower_limit, double upper_limit)
 
 // limits the max change rate of input value
 //0.006 is frame time
-inline double deltaLimit(double input, double targetValue, double deltaLimit)
+inline double deltaLimit(double input, double targetValue, double deltaLimit, double dt = 0.006)
 {
 	double output;
 	double difference = targetValue - input;
 
 	if (difference > 0.0)
 	{
-		output = limit(input + deltaLimit * 0.006, input, targetValue);
+		output = limit(input + deltaLimit * dt, input, targetValue);
 	}
 	else
 	{
-		output = limit(input - deltaLimit * 0.006, targetValue, input);
+		output = limit(input - deltaLimit * dt, targetValue, input);
 	}
 
 	return output;

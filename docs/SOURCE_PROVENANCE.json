@@ -1,0 +1,33 @@
+{
+  "version": "0.1.12C",
+  "base_commit": "da1d27b8655d302813509216d728c98b8d09838e",
+  "source_origin": "Existing CH46D_0.1.12C_RotorDroop_Arg package",
+  "changed_source_files": [
+    "EFM Source Code/EFM/CH46D.cpp",
+    "EFM Source Code/EFM/CH46D.h",
+    "EFM Source Code/EFM/CH46D.vcxproj",
+    "EFM Source Code/EFM/CH46D.vcxproj.filters",
+    "EFM Source Code/EFM/DebugTelemetry.h",
+    "EFM Source Code/EFM/EFMData.h",
+    "EFM Source Code/EFM/FlightModel/Aero.cpp",
+    "EFM Source Code/EFM/FlightModel/Aero.h",
+    "EFM Source Code/EFM/FlightModel/GaugeMath.h",
+    "EFM Source Code/EFM/FlightModel/RotorKinematics.h",
+    "EFM Source Code/EFM/FlightModel/RotorMechanics.h",
+    "EFM Source Code/EFM/FlightModel/TandemConfig.h",
+    "EFM Source Code/EFM/include/Cockpit/CockpitAPI.h",
+    "EFM Source Code/EFM/include/GlobalData.h",
+    "EFM Source Code/EFM/include/UtilityFunctions.h",
+    "EFM Source Code/EFM/stdafx.h",
+    "EFM Source Code/EFM/Systems/Damage.h",
+    "EFM Source Code/EFM/Systems/Engine.h",
+    "EFM Source Code/EFM/Systems/FlightControls.h",
+    "EFM Source Code/EFM/Systems/FuelSystem.h",
+    "EFM Source Code/EFM/Systems/ThrottleControl.h",
+    "EFM Source Code/EFM/Systems/TwinEngine.h"
+  ],
+  "dll_sha256": "75bc9c8f4998690d7bae03ef0a70a3b7b8073bdc6e494734c6b8fc2095065bd5",
+  "new_physics_tuning": false,
+  "cleanup_applied": false,
+  "runtime": "NOT EXERCISED"
+}

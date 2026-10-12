@@ -1,0 +1,9 @@
+CH-46D EFM 0.1.12C local validation
+
+PASS - Windows x64 DLL built with pinned Zig 0.13.0.
+PASS - Compile-time check confirms EXT_RotorDroop is 1036, not ramp argument 36.
+PASS - Retains the tested 0.1.12B governor implementation unchanged.
+PASS - Windows DLL SHA-256:
+       75BC9C8F4998690D7BAE03EF0A70A3B7B8073BDC6E494734C6B8FC2095065BD5
+
+REQUIRED - DCS ramp closure, rotor droop, hover RPM, and collective validation.
